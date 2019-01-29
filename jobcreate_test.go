@@ -1,50 +1,50 @@
-package plugin
+package orchestrator
 
 import (
 	"testing"
 
-	"github.com/netdata/go-plugin/cli"
-	"github.com/netdata/go-plugin/module"
-	"github.com/netdata/go-plugin/pkg/multipath"
+	"github.com/netdata/go-orchestrator/cli"
+	"github.com/netdata/go-orchestrator/module"
+	"github.com/netdata/go-orchestrator/pkg/multipath"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_loadModuleConfigNoConfig(t *testing.T) {
-	p := New()
-	p.Name = "go.d"
+	o := New()
+	o.Name = "go.d"
 
-	p.ConfigPath = multipath.New("./tests")
+	o.ConfigPath = multipath.New("./testdata")
 
-	assert.Nil(t, p.loadModuleConfig("no config"))
+	assert.Nil(t, o.loadModuleConfig("no config"))
 }
 
 func Test_loadModuleConfigBrokenConfig(t *testing.T) {
-	p := New()
-	p.Name = "go.d"
+	o := New()
+	o.Name = "go.d"
 
-	p.ConfigPath = multipath.New("./tests")
+	o.ConfigPath = multipath.New("./testdata")
 
-	assert.Nil(t, p.loadModuleConfig("module-broken"))
+	assert.Nil(t, o.loadModuleConfig("module-broken"))
 }
 
 func Test_loadModuleConfigNoJobs(t *testing.T) {
-	p := New()
-	p.Name = "go.d"
+	o := New()
+	o.Name = "go.d"
 
-	p.ConfigPath = multipath.New("./tests")
+	o.ConfigPath = multipath.New("./testdata")
 
-	assert.Nil(t, p.loadModuleConfig("module-no-jobs"))
+	assert.Nil(t, o.loadModuleConfig("module-no-jobs"))
 }
 
 func Test_loadModuleConfig(t *testing.T) {
-	p := New()
-	p.Name = "go.d"
+	o := New()
+	o.Name = "go.d"
 
-	p.ConfigPath = multipath.New("./tests")
+	o.ConfigPath = multipath.New("./testdata")
 
-	conf := p.loadModuleConfig("module1")
+	conf := o.loadModuleConfig("module1")
 
 	require.NotNil(t, conf)
 
@@ -52,11 +52,11 @@ func Test_loadModuleConfig(t *testing.T) {
 }
 
 func Test_createModuleJobs(t *testing.T) {
-	p := New()
-	p.Name = "go.d"
+	o := New()
+	o.Name = "go.d"
 
-	p.ConfigPath = multipath.New("./tests")
-	p.Option = &cli.Option{}
+	o.ConfigPath = multipath.New("./testdata")
+	o.Option = &cli.Option{}
 
 	reg := make(module.Registry)
 	reg.Register(
@@ -64,11 +64,11 @@ func Test_createModuleJobs(t *testing.T) {
 		module.Creator{Create: func() module.Module { return &module.MockModule{} }},
 	)
 
-	p.Registry = reg
+	o.Registry = reg
 	conf := newModuleConfig()
 	conf.Jobs = []map[string]interface{}{{}, {}, {}}
 	conf.name = "module1"
-	assert.Len(t, p.createModuleJobs(conf), 3)
+	assert.Len(t, o.createModuleJobs(conf), 3)
 }
 
 func TestPluginConfig_isModuleEnabled(t *testing.T) {

@@ -1,4 +1,4 @@
-package plugin
+package orchestrator
 
 type mockJob struct {
 	fullName   func() string

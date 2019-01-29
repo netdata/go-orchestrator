@@ -5,10 +5,10 @@ import (
 	"math/rand"
 	"os"
 
-	"github.com/netdata/go-plugin/cli"
-	"github.com/netdata/go-plugin/logger"
-	"github.com/netdata/go-plugin/module"
-	"github.com/netdata/go-plugin/plugin"
+	"github.com/netdata/go-orchestrator"
+	"github.com/netdata/go-orchestrator/cli"
+	"github.com/netdata/go-orchestrator/logger"
+	"github.com/netdata/go-orchestrator/module"
 )
 
 var charts = module.Charts{
@@ -56,8 +56,8 @@ func main() {
 	p.Serve()
 }
 
-func createPlugin(opt *cli.Option) *plugin.Plugin {
-	p := plugin.New()
+func createPlugin(opt *cli.Option) *orchestrator.Orchestrator {
+	p := orchestrator.New()
 	p.Name = "go.d"
 	p.Option = opt
 	p.Registry = make(module.Registry)

@@ -1,11 +1,11 @@
-package plugin
+package orchestrator
 
 import (
 	"fmt"
 	"io"
 	"os"
 
-	"github.com/netdata/go-plugin/module"
+	"github.com/netdata/go-orchestrator/module"
 
 	"gopkg.in/yaml.v2"
 )
@@ -45,11 +45,11 @@ func (m *moduleConfig) updateJobs(moduleUpdateEvery, pluginUpdateEvery int) {
 	}
 }
 
-func (p *Plugin) loadModuleConfig(name string) *moduleConfig {
+func (o *Orchestrator) loadModuleConfig(name string) *moduleConfig {
 
 	log.Infof("loading '%s' configuration", name)
 
-	configPath, err := p.ConfigPath.Find(fmt.Sprintf("%s/%s.conf", p.Name, name))
+	configPath, err := o.ConfigPath.Find(fmt.Sprintf("%s/%s.conf", o.Name, name))
 	if err != nil {
 		log.Warningf("skipping '%s': %v", name, err)
 		return nil
@@ -71,11 +71,11 @@ func (p *Plugin) loadModuleConfig(name string) *moduleConfig {
 	return modConf
 }
 
-func (p *Plugin) createModuleJobs(modConf *moduleConfig) []Job {
+func (o *Orchestrator) createModuleJobs(modConf *moduleConfig) []Job {
 	var jobs []Job
 
-	creator := p.Registry[modConf.name]
-	modConf.updateJobs(creator.UpdateEvery, p.Option.UpdateEvery)
+	creator := o.Registry[modConf.name]
+	modConf.updateJobs(creator.UpdateEvery, o.Option.UpdateEvery)
 
 	jobName := func(conf map[string]interface{}) interface{} {
 		if name, ok := conf["name"]; ok {
@@ -92,7 +92,7 @@ func (p *Plugin) createModuleJobs(modConf *moduleConfig) []Job {
 			continue
 		}
 
-		job := module.NewJob(p.Name, modConf.name, mod, p.Out, p)
+		job := module.NewJob(o.Name, modConf.name, mod, o.Out, o)
 
 		if err := unmarshal(conf, job); err != nil {
 			log.Errorf("skipping %s[%s]: %s", modConf.name, jobName(conf), err)
@@ -105,16 +105,16 @@ func (p *Plugin) createModuleJobs(modConf *moduleConfig) []Job {
 	return jobs
 }
 
-func (p *Plugin) createJobs() []Job {
+func (o *Orchestrator) createJobs() []Job {
 	var jobs []Job
 
-	for name := range p.modules {
-		conf := p.loadModuleConfig(name)
+	for name := range o.modules {
+		conf := o.loadModuleConfig(name)
 		if conf == nil {
 			continue
 		}
 
-		for _, job := range p.createModuleJobs(conf) {
+		for _, job := range o.createModuleJobs(conf) {
 			jobs = append(jobs, job)
 		}
 	}

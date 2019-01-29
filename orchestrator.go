@@ -1,4 +1,4 @@
-package plugin
+package orchestrator
 
 import (
 	"fmt"
@@ -6,20 +6,20 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"sync"
 	"syscall"
 	"time"
 
-	"github.com/netdata/go-plugin/cli"
-	"github.com/netdata/go-plugin/logger"
-	"github.com/netdata/go-plugin/module"
-	"github.com/netdata/go-plugin/pkg/multipath"
-	"github.com/netdata/go-plugin/plugin/ticker"
+	"github.com/netdata/go-orchestrator/cli"
+	"github.com/netdata/go-orchestrator/logger"
+	"github.com/netdata/go-orchestrator/module"
+	"github.com/netdata/go-orchestrator/pkg/multipath"
 
 	"github.com/mattn/go-isatty"
 )
 
 var (
-	log = logger.New("plugin", "main")
+	log = logger.New("orchestrator", "main")
 
 	cd, _             = os.Getwd()
 	defaultConfigPath = multipath.New(
@@ -67,9 +67,9 @@ func (c Config) isModuleEnabled(module string, explicit bool) bool {
 	return c.DefaultRun
 }
 
-// New creates Plugin.
-func New() *Plugin {
-	return &Plugin{
+// New creates Orchestrator.
+func New() *Orchestrator {
+	return &Orchestrator{
 		ConfigPath:       multipath.New(defaultConfigPath...),
 		Config:           &Config{Enabled: true, DefaultRun: true},
 		Registry:         module.DefaultRegistry,
@@ -81,8 +81,8 @@ func New() *Plugin {
 	}
 }
 
-// Plugin represents plugin.
-type Plugin struct {
+// Orchestrator represents orchestrator.
+type Orchestrator struct {
 	Name       string
 	Out        io.Writer
 	Registry   module.Registry
@@ -101,52 +101,52 @@ type Plugin struct {
 }
 
 // RemoveFromQueue removes job from the loop queue by full name.
-func (p *Plugin) RemoveFromQueue(fullName string) {
-	if job := p.loopQueue.remove(fullName); job != nil {
+func (o *Orchestrator) RemoveFromQueue(fullName string) {
+	if job := o.loopQueue.remove(fullName); job != nil {
 		job.Stop()
 	}
 }
 
 // Serve Serve
-func (p *Plugin) Serve() {
+func (o *Orchestrator) Serve() {
 	go shutdownTask()
 
 	if !isatty.IsTerminal(os.Stdout.Fd()) {
 		go heartbeatTask()
 	}
 
-	go p.jobStartLoop()
+	go o.jobStartLoop()
 
-	for _, job := range p.createJobs() {
-		p.jobStartCh <- job
+	for _, job := range o.createJobs() {
+		o.jobStartCh <- job
 	}
 
-	p.mainLoop()
+	o.mainLoop()
 }
 
-func (p *Plugin) mainLoop() {
+func (o *Orchestrator) mainLoop() {
 	log.Info("start main loop")
-	tk := ticker.New(time.Second)
+	tk := NewTicker(time.Second)
 
 LOOP:
 	for {
 		select {
-		case <-p.mainLoopStop:
+		case <-o.mainLoopStop:
 			break LOOP
 		case clock := <-tk.C:
-			p.runOnce(clock)
+			o.runOnce(clock)
 		}
 	}
 }
 
-func (p *Plugin) runOnce(clock int) {
+func (o *Orchestrator) runOnce(clock int) {
 	log.Debugf("tick %d", clock)
-	p.loopQueue.notify(clock)
+	o.loopQueue.notify(clock)
 }
 
-func (p *Plugin) stop() {
-	p.jobStartLoopStop <- struct{}{}
-	p.mainLoopStop <- struct{}{}
+func (o *Orchestrator) stop() {
+	o.jobStartLoopStop <- struct{}{}
+	o.mainLoopStop <- struct{}{}
 }
 
 func shutdownTask() {
@@ -169,5 +169,39 @@ func heartbeatTask() {
 	t := time.Tick(time.Second)
 	for range t {
 		_, _ = fmt.Fprint(os.Stdout, "\n")
+	}
+}
+
+type loopQueue struct {
+	mux   sync.Mutex
+	queue []Job
+}
+
+func (q *loopQueue) add(job Job) {
+	q.mux.Lock()
+	defer q.mux.Unlock()
+
+	q.queue = append(q.queue, job)
+}
+
+func (q *loopQueue) remove(fullName string) Job {
+	q.mux.Lock()
+	defer q.mux.Unlock()
+
+	for i, job := range q.queue {
+		if job.FullName() == fullName {
+			q.queue = append(q.queue[:i], q.queue[i+1:]...)
+			return job
+		}
+	}
+	return nil
+}
+
+func (q *loopQueue) notify(clock int) {
+	q.mux.Lock()
+	defer q.mux.Unlock()
+
+	for _, job := range q.queue {
+		job.Tick(clock)
 	}
 }

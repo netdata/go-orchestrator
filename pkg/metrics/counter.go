@@ -3,7 +3,7 @@ package metrics
 import (
 	"errors"
 
-	"github.com/netdata/go-plugin/pkg/stm"
+	"github.com/netdata/go-orchestrator/pkg/stm"
 )
 
 type (

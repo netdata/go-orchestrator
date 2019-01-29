@@ -1,4 +1,4 @@
-package ticker
+package orchestrator
 
 import (
 	"testing"
@@ -19,7 +19,7 @@ func TestTickerParallel(t *testing.T) {
 }
 
 func TestTicker(t *testing.T) {
-	ticker := New(time.Second)
+	ticker := NewTicker(time.Second)
 	defer ticker.Stop()
 	prev := time.Now()
 	for i := 0; i < 3; i++ {
