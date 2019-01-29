@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"path"
 	"sync"
 	"syscall"
 	"time"
@@ -25,8 +24,6 @@ var (
 	defaultConfigPath = multipath.New(
 		os.Getenv("NETDATA_USER_CONFIG_DIR"),
 		os.Getenv("NETDATA_STOCK_CONFIG_DIR"),
-		path.Join(cd, "/../../../../etc/netdata"),            // if installed in /opt
-		path.Join(cd, "/../../../../usr/lib/netdata/conf.d"), // if installed in /opt
 	)
 )
 

@@ -16,8 +16,8 @@ func (o *Orchestrator) Setup() bool {
 		log.Critical("cli options not set")
 		return false
 	}
-	if o.Option.ConfigDir != "" {
-		o.ConfigPath = multipath.New(o.Option.ConfigDir)
+	if len(o.Option.ConfigDir) != 0 {
+		o.ConfigPath = multipath.New(o.Option.ConfigDir...)
 	}
 	if len(o.ConfigPath) == 0 {
 		log.Critical("config path not set or empty")

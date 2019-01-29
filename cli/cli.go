@@ -9,9 +9,9 @@ import (
 // Option defines command line options.
 type Option struct {
 	UpdateEvery int
-	Debug       bool   `short:"d" long:"debug" description:"debug mode"`
-	Module      string `short:"m" long:"modules" description:"modules name" default:"all"`
-	ConfigDir   string `short:"c" long:"config" description:"config dir"`
+	Debug       bool     `short:"d" long:"debug" description:"debug mode"`
+	Module      string   `short:"m" long:"modules" description:"modules name" default:"all"`
+	ConfigDir   []string `short:"c" long:"config" description:"config dir"`
 }
 
 // Parse returns parsed command-line flags in Option struct
