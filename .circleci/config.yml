@@ -1,0 +1,49 @@
+version: 2
+jobs:
+  compile:
+    docker:
+      - image: circleci/golang:1.11
+    steps:
+    - checkout
+    - restore_cache:
+        keys:
+        - go_mod-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
+    - run: go get -t -v -d ./...
+    - save_cache:
+        key: go_mod-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
+        paths:
+        - /go/pkg/mod
+    - run: go build -o /tmp/godplugin github.com/netdata/go-plugin/examples/simple
+    - run: /tmp/godplugin --help || true
+    - store_artifacts:
+        path: /tmp/godplugin
+  vet:
+    docker:
+    - image: circleci/golang:1.11
+    steps:
+    - checkout
+    - restore_cache:
+        keys:
+        - go_mod-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
+    - run: go vet ./...
+  test:
+    docker:
+    - image: circleci/golang:1.11
+    steps:
+    - checkout
+    - restore_cache:
+        keys:
+        - go_mod-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
+    - run: go test ./... -coverprofile=coverage.txt -race -cover -covermode=atomic
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+    - compile
+    - vet:
+        requires:
+        - compile
+    - test:
+        requires:
+        - compile
