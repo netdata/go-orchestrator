@@ -76,7 +76,7 @@ type (
 	// For the full description please visit https://docs.netdata.cloud/collectors/plugins.d/#chart
 	Chart struct {
 		// typeID is the unique identification of the chart, if not specified,
-		// the plugin will use job full name + chart ID as typeID (default behaviour).
+		// the orchestrator will use job full name + chart ID as typeID (default behaviour).
 		typeID string
 
 		ID       string
@@ -95,7 +95,7 @@ type (
 		Retries int
 
 		remove bool
-		// created flag is used to indicate whether the chart needs to be created by the plugin.
+		// created flag is used to indicate whether the chart needs to be created by the orchestrator.
 		created bool
 		// updated flag is used to indicate whether the chart was updated on last data collection interval.
 		updated bool

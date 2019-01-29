@@ -9,7 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/netdata/go-plugin/pkg/web"
+	"github.com/netdata/go-orchestrator/pkg/web"
 	"github.com/prometheus/prometheus/pkg/labels"
 	"github.com/prometheus/prometheus/pkg/textparse"
 )
@@ -35,7 +35,7 @@ type (
 
 const (
 	acceptHeader    = `text/plain;version=0.0.4;q=1,*/*;q=0.1`
-	userAgentHeader = `netdata/go.d.plugin`
+	userAgentHeader = `netdata/go.d.orchestrator`
 )
 
 // New creates a Prometheus instance.

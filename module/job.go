@@ -6,7 +6,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/netdata/go-plugin/logger"
+	"github.com/netdata/go-orchestrator/logger"
 )
 
 const (

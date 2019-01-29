@@ -1,6 +1,6 @@
 package matcher_test
 
-import "github.com/netdata/go-plugin/pkg/matcher"
+import "github.com/netdata/go-orchestrator/pkg/matcher"
 
 func ExampleNew_string_format() {
 	// create a string matcher, which perform full text match

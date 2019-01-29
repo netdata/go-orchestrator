@@ -23,13 +23,13 @@ func TestNetdataAPI_chart(t *testing.T) {
 		1,
 		1,
 		Opts{},
-		"plugin",
+		"orchestrator",
 		"module",
 	)
 
 	assert.Equal(
 		t,
-		"CHART '.id' 'name' 'title' 'units' 'family' 'context' 'line' '1' '1' '' 'plugin' 'module'\n",
+		"CHART '.id' 'name' 'title' 'units' 'family' 'context' 'line' '1' '1' '' 'orchestrator' 'module'\n",
 		b.String(),
 	)
 }

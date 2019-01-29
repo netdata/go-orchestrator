@@ -3,8 +3,8 @@ package stm_test
 import (
 	"testing"
 
-	"github.com/netdata/go-plugin/pkg/metrics"
-	"github.com/netdata/go-plugin/pkg/stm"
+	"github.com/netdata/go-orchestrator/pkg/metrics"
+	"github.com/netdata/go-orchestrator/pkg/stm"
 
 	"github.com/stretchr/testify/assert"
 )

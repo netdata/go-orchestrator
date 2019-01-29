@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/netdata/go-plugin/logger"
+	"github.com/netdata/go-orchestrator/logger"
 
 	"github.com/stretchr/testify/assert"
 )

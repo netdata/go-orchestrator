@@ -20,7 +20,7 @@ func Parse(args []string) (*Option, error) {
 		UpdateEvery: 1,
 	}
 	parser := flags.NewParser(opt, flags.Default)
-	parser.Name = "plugin"
+	parser.Name = "orchestrator"
 	parser.Usage = "[OPTIONS] [update every]"
 
 	rest, err := parser.ParseArgs(args)

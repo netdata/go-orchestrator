@@ -1,35 +1,37 @@
-package plugin
+package orchestrator
 
-import "time"
+import (
+	"time"
+)
 
-func (p *Plugin) jobStartLoop() {
+func (o *Orchestrator) jobStartLoop() {
 	started := make(map[string]bool)
 LOOP:
 	for {
 		select {
-		case <-p.jobStartLoopStop:
+		case <-o.jobStartLoopStop:
 			break LOOP
-		case job := <-p.jobStartCh:
-			p.startOnce(job, started)
+		case job := <-o.jobStartCh:
+			o.startOnce(job, started)
 		}
 	}
 }
 
-func (p *Plugin) startOnce(job Job, started map[string]bool) {
+func (o *Orchestrator) startOnce(job Job, started map[string]bool) {
 	if started[job.FullName()] {
 		log.Infof("skipping %s[%s]: already served by another job", job.ModuleName(), job.Name())
 		return
 	}
 
-	if p.initJob(job) && p.checkJob(job) && p.postCheckJob(job) {
+	if o.initJob(job) && o.checkJob(job) && o.postCheckJob(job) {
 		started[job.FullName()] = true
 		go job.Start()
-		p.loopQueue.add(job)
+		o.loopQueue.add(job)
 	}
 
 }
 
-func (p *Plugin) initJob(job Job) bool {
+func (o *Orchestrator) initJob(job Job) bool {
 	if !job.Init() {
 		log.Errorf("%s[%s] Init failed", job.ModuleName(), job.Name())
 		return false
@@ -37,7 +39,7 @@ func (p *Plugin) initJob(job Job) bool {
 	return true
 }
 
-func (p *Plugin) checkJob(job Job) bool {
+func (o *Orchestrator) checkJob(job Job) bool {
 	ok := job.Check()
 
 	if job.Panicked() {
@@ -47,14 +49,14 @@ func (p *Plugin) checkJob(job Job) bool {
 	if !ok {
 		log.Errorf("%s[%s] Check failed", job.ModuleName(), job.Name())
 		if job.AutoDetectionRetry() > 0 {
-			go recheckTask(p.jobStartCh, job)
+			go recheckTask(o.jobStartCh, job)
 		}
 		return false
 	}
 	return true
 }
 
-func (p *Plugin) postCheckJob(job Job) bool {
+func (o *Orchestrator) postCheckJob(job Job) bool {
 	if !job.PostCheck() {
 		log.Errorf("%s[%s] PostCheck failed", job.ModuleName(), job.Name())
 		return false

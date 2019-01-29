@@ -8,14 +8,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/netdata/go-plugin/pkg/web"
+	"github.com/netdata/go-orchestrator/pkg/web"
 	"github.com/prometheus/prometheus/pkg/labels"
 
 	"github.com/stretchr/testify/assert"
 )
 
-var testdata, _ = ioutil.ReadFile("tests/testdata.txt")
-var testdataNometa, _ = ioutil.ReadFile("tests/testdata.nometa.txt")
+var testdata, _ = ioutil.ReadFile("testdata/testdata.txt")
+var testdataNometa, _ = ioutil.ReadFile("testdata/testdata.nometa.txt")
 
 func TestPrometheus404(t *testing.T) {
 	tsMux := http.NewServeMux()

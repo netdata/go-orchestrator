@@ -1,6 +1,6 @@
 package metrics
 
-import "github.com/netdata/go-plugin/pkg/stm"
+import "github.com/netdata/go-orchestrator/pkg/stm"
 
 // Observer is a interface that wraps the Observe method, which is used by
 // Histogram and Summary to add observations.

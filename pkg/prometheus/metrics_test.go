@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TODO: write better tests
+// TODO: write better testdata
 
 const (
 	testName1 = "logback_events_total"
