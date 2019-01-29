@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var testdata, _ = ioutil.ReadFile("testdata/testdata.txt")
-var testdataNometa, _ = ioutil.ReadFile("testdata/testdata.nometa.txt")
+var testdata, _ = ioutil.ReadFile("tests/testdata.txt")
+var testdataNometa, _ = ioutil.ReadFile("tests/testdata.nometa.txt")
 
 func TestPrometheus404(t *testing.T) {
 	tsMux := http.NewServeMux()
