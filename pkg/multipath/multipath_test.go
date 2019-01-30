@@ -1,6 +1,7 @@
 package multipath
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,4 +29,9 @@ func TestMultiPath_Find(t *testing.T) {
 	v, err = m.Find("test.conf")
 	assert.Equal(t, "tests/test.conf", v)
 	assert.Nil(t, err)
+}
+
+func TestIsNotFound(t *testing.T) {
+	assert.True(t, IsNotFound(ErrNotFound{}))
+	assert.False(t, IsNotFound(errors.New("")))
 }

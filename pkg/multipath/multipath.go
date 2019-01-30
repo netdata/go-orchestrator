@@ -8,6 +8,19 @@ import (
 	"github.com/mitchellh/go-homedir"
 )
 
+type ErrNotFound struct{ msg string }
+
+func (e ErrNotFound) Error() string { return e.msg }
+
+// IsNotFound returns a boolean indicating whether the error is ErrNotFound or not.
+func IsNotFound(err error) bool {
+	switch err.(type) {
+	case ErrNotFound:
+		return true
+	}
+	return false
+}
+
 // MultiPath multi-paths
 type MultiPath []string
 
@@ -40,5 +53,5 @@ func (p MultiPath) Find(filename string) (string, error) {
 			return file, nil
 		}
 	}
-	return "", fmt.Errorf("can't find '%s' in %v", filename, p)
+	return "", ErrNotFound{msg: fmt.Sprintf("can't find '%s' in %v", filename, p)}
 }
