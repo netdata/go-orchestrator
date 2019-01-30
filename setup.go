@@ -31,15 +31,21 @@ func (o *Orchestrator) Setup() bool {
 	if o.configName == "" {
 		o.configName = o.Name + ".conf"
 	}
-	configFile, err := o.ConfigPath.Find(o.configName)
-	if err != nil {
-		log.Critical("find config file error: ", err)
-		return false
-	}
 
-	if err := loadYAML(o.Config, configFile); err != nil {
-		log.Critical("loadYAML config error: ", err)
-		return false
+	configFile, err := o.ConfigPath.Find(o.configName)
+
+	if err != nil {
+		if !multipath.IsNotFound(err) {
+			log.Criticalf("find config file error : %v", err)
+			return false
+		}
+
+		log.Errorf("find config file error : %v", err)
+	} else {
+		if err := loadYAML(o.Config, configFile); err != nil {
+			log.Criticalf("loadYAML config error : %v", err)
+			return false
+		}
 	}
 
 	if !o.Config.Enabled {

@@ -47,10 +47,10 @@ func TestOrchestrator_SetupNoRegistry(t *testing.T) {
 func TestOrchestrator_SetupNoConfig(t *testing.T) {
 	o := New()
 	o.Name = "test"
-	o.Option = &cli.Option{}
+	o.Option = &cli.Option{Module: "all"}
 	o.ConfigPath = multipath.New("./testdata")
 	o.Registry = module.Registry{"module1": module.Creator{}}
-	assert.False(t, o.Setup())
+	assert.True(t, o.Setup())
 }
 
 func TestPlugin_SetupBrokenConfig(t *testing.T) {
