@@ -103,7 +103,7 @@ default_run: yes
 # Maximum number of used CPUs. Zero means no limit.
 max_procs: 0
 
-# Enable/disable specific g.d.plugin module
+# Enable/disable specific plugin module
 modules:
 #  module_name1: yes
 #  module_name2: yes
@@ -153,7 +153,7 @@ Specific module debug:
 sudo su -s /bin/bash netdata
 
 # run plugin in debug mode
-./<plugin_name> -d -m <module name>
+./<plugin_name> -d -m <module_name>
 ```
 
-Change `<module name>` to the module name you want to debug.
+Change `<plugin_name>` to your plugin name and `<module_name>` to the module name you want to debug.
