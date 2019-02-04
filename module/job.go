@@ -14,11 +14,6 @@ const (
 	maxPenalty  = 600
 )
 
-// Observer Observer
-type Observer interface {
-	RemoveFromQueue(fullName string)
-}
-
 // NewJob returns new job.
 func NewJob(pluginName string, moduleName string, module Module, out io.Writer) *Job {
 	buf := &bytes.Buffer{}
