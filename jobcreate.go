@@ -104,7 +104,7 @@ func (o *Orchestrator) createModuleJobs(modConf *moduleConfig) []Job {
 			continue
 		}
 
-		job := module.NewJob(o.Name, modConf.name, mod, o.Out, o)
+		job := module.NewJob(o.Name, modConf.name, mod, o.Out)
 
 		if err := unmarshal(conf, job); err != nil {
 			log.Errorf("skipping %s[%s]: %s", modConf.name, jobName(conf), err)
