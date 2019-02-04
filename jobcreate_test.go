@@ -15,7 +15,7 @@ func Test_loadModuleConfigNoConfig(t *testing.T) {
 	o := New()
 	o.Name = "test.d"
 	o.ConfigPath = multipath.New("./testdata")
-	assert.Nil(t, o.loadModuleConfig("no config"))
+	assert.NotNil(t, o.loadModuleConfig("no_config"))
 }
 
 func Test_loadModuleConfigBrokenConfig(t *testing.T) {

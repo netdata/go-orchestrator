@@ -61,7 +61,7 @@ func (o *Orchestrator) loadModuleConfig(name string) *moduleConfig {
 
 	if err != nil {
 		if !multipath.IsNotFound(err) {
-			log.Warningf("skipping '%s': %v", name, err)
+			log.Errorf("skipping '%s': %v", name, err)
 			return nil
 		}
 
@@ -71,12 +71,12 @@ func (o *Orchestrator) loadModuleConfig(name string) *moduleConfig {
 	}
 
 	if err = loadYAML(modConf, configPath); err != nil {
-		log.Warningf("skipping '%s': %v", name, err)
+		log.Errorf("skipping '%s': %v", name, err)
 		return nil
 	}
 
 	if len(modConf.Jobs) == 0 {
-		log.Warningf("skipping '%s': config 'jobs' section is empty or not exist", name)
+		log.Errorf("skipping '%s': config 'jobs' section is empty or not exist", name)
 		return nil
 	}
 
