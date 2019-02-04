@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	penaltyStep = 5
-	maxPenalty  = 600
+	penaltyStep        = 5
+	maxPenalty         = 600
+	defaultJobPriority = 70000
 )
 
 // NewJob returns new job.
@@ -36,7 +37,7 @@ func NewJob(pluginName string, moduleName string, module Module, out io.Writer) 
 		tick:      make(chan int),
 		buf:       buf,
 		apiWriter: apiWriter{Writer: buf},
-		priority:  70000,
+		priority:  defaultJobPriority,
 	}
 }
 

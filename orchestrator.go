@@ -20,7 +20,6 @@ import (
 var (
 	log = logger.New("plugin", "main", "main")
 
-	cd, _             = os.Getwd()
 	defaultConfigPath = multipath.New(
 		os.Getenv("NETDATA_USER_CONFIG_DIR"),
 		os.Getenv("NETDATA_STOCK_CONFIG_DIR"),
