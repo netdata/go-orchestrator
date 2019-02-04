@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/netdata/go-orchestrator/module"
+	"github.com/netdata/go-orchestrator/pkg/multipath"
 
 	"gopkg.in/yaml.v2"
 )
@@ -53,22 +54,29 @@ func (o *Orchestrator) loadModuleConfig(name string) *moduleConfig {
 		dirName = o.Name
 	}
 
-	configPath, err := o.ConfigPath.Find(fmt.Sprintf("%s/%s.conf", dirName, name))
-	if err != nil {
-		log.Warningf("skipping '%s': %v", name, err)
-		return nil
-	}
-
 	modConf := newModuleConfig()
 	modConf.name = name
 
+	configPath, err := o.ConfigPath.Find(fmt.Sprintf("%s/%s.conf", dirName, name))
+
+	if err != nil {
+		if !multipath.IsNotFound(err) {
+			log.Errorf("skipping '%s': %v", name, err)
+			return nil
+		}
+
+		log.Warningf("'%s': %v, will use default 1 job configuration", name, err)
+		modConf.Jobs = []map[string]interface{}{{}}
+		return modConf
+	}
+
 	if err = loadYAML(modConf, configPath); err != nil {
-		log.Warningf("skipping '%s': %v", name, err)
+		log.Errorf("skipping '%s': %v", name, err)
 		return nil
 	}
 
 	if len(modConf.Jobs) == 0 {
-		log.Warningf("skipping '%s': config 'jobs' section is empty or not exist", name)
+		log.Errorf("skipping '%s': config 'jobs' section is empty or not exist", name)
 		return nil
 	}
 

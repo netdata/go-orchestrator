@@ -15,7 +15,7 @@ func Test_loadModuleConfigNoConfig(t *testing.T) {
 	o := New()
 	o.Name = "test.d"
 	o.ConfigPath = multipath.New("./testdata")
-	assert.Nil(t, o.loadModuleConfig("no config"))
+	assert.NotNil(t, o.loadModuleConfig("no_config"))
 }
 
 func Test_loadModuleConfigBrokenConfig(t *testing.T) {
@@ -40,6 +40,16 @@ func Test_loadModuleConfig(t *testing.T) {
 	conf := o.loadModuleConfig("module1")
 	require.NotNil(t, conf)
 	assert.Equal(t, 3, len(conf.Jobs))
+}
+
+func Test_loadModuleConfigNotFound(t *testing.T) {
+	o := New()
+	o.Name = "test.d"
+	o.ConfigPath = multipath.New("./testdata")
+	o.ModulesConfigDirName = "test_not_exist.d"
+	conf := o.loadModuleConfig("module1")
+	require.NotNil(t, conf)
+	assert.Equal(t, 1, len(conf.Jobs))
 }
 
 func Test_createModuleJobs(t *testing.T) {

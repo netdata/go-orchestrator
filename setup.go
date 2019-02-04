@@ -43,8 +43,7 @@ func (o *Orchestrator) Setup() bool {
 			log.Criticalf("find config file error : %v", err)
 			return false
 		}
-
-		log.Errorf("find config file error : %v", err)
+		log.Warningf("find config file error : %v, will use default configuration", err)
 	} else {
 		if err := loadYAML(o.Config, configFile); err != nil {
 			log.Criticalf("loadYAML config error : %v", err)
