@@ -29,7 +29,7 @@ You are responsible only for __creating modules__.
 
 ## Custom plugin example
 
-[Yep! So easy!](https://github.com/ilyam8/go-orchestrator/blob/master/examples/simple/main.go)
+[Yep! So easy!](https://github.com/netdata/go-orchestrator/blob/master/examples/simple/main.go)
 
 ## How to write a Module
 
@@ -73,7 +73,7 @@ func (b *Base) SetLogger(l *logger.Logger) { b.Logger = l }
 
 Since plugin is a set of modules all you need is:
  - write module(s)
- - add module(s) to the plugins [registry](https://github.com/ilyam8/go-orchestrator/blob/master/module/registry.go)
+ - add module(s) to the plugins [registry](https://github.com/netdata/go-orchestrator/blob/master/module/registry.go)
  - start the plugin
 
 
