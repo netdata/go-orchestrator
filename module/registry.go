@@ -22,9 +22,9 @@ func Register(name string, creator Creator) {
 }
 
 // Register registers a module
-func (r *Registry) Register(name string, creator Creator) {
-	if _, ok := (*r)[name]; ok {
+func (r Registry) Register(name string, creator Creator) {
+	if _, ok := r[name]; ok {
 		panic(fmt.Sprintf("%s is already in registry", name))
 	}
-	(*r)[name] = creator
+	r[name] = creator
 }
