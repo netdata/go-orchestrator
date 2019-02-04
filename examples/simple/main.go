@@ -46,7 +46,7 @@ func main() {
 		logger.SetSeverity(logger.DEBUG)
 	}
 
-	p := createPlugin(opt)
+	p := newPlugin(opt)
 
 	if !p.Setup() {
 		return
@@ -55,7 +55,7 @@ func main() {
 	p.Serve()
 }
 
-func createPlugin(opt *cli.Option) *orchestrator.Orchestrator {
+func newPlugin(opt *cli.Option) *orchestrator.Orchestrator {
 	p := orchestrator.New()
 	p.Name = "test.d"
 	p.Option = opt
