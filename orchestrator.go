@@ -98,13 +98,6 @@ type Orchestrator struct {
 	loopQueue loopQueue
 }
 
-// RemoveFromQueue removes job from the loop queue by full name.
-func (o *Orchestrator) RemoveFromQueue(fullName string) {
-	if job := o.loopQueue.remove(fullName); job != nil {
-		job.Stop()
-	}
-}
-
 // Serve Serve
 func (o *Orchestrator) Serve() {
 	go shutdownTask()
