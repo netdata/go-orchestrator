@@ -24,7 +24,7 @@ func TestNew(t *testing.T) {
 
 func TestOrchestrator_Serve(t *testing.T) {
 	o := New()
-	o.Name = "go.d"
+	o.Name = "test.d"
 
 	mod := func() module.Module {
 		return &module.MockModule{
@@ -58,7 +58,7 @@ func TestOrchestrator_Serve(t *testing.T) {
 		"module1": module.Creator{Create: func() module.Module { return mod() }},
 		"module2": module.Creator{Create: func() module.Module { return mod() }},
 	}
-	o.configName = "go.d.conf.yml"
+	o.configName = "test.d.conf.yml"
 
 	require.True(t, o.Setup())
 

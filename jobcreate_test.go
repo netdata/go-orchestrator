@@ -13,51 +13,40 @@ import (
 
 func Test_loadModuleConfigNoConfig(t *testing.T) {
 	o := New()
-	o.Name = "go.d"
-
+	o.Name = "test.d"
 	o.ConfigPath = multipath.New("./testdata")
-
 	assert.Nil(t, o.loadModuleConfig("no config"))
 }
 
 func Test_loadModuleConfigBrokenConfig(t *testing.T) {
 	o := New()
-	o.Name = "go.d"
-
+	o.Name = "test.d"
 	o.ConfigPath = multipath.New("./testdata")
-
 	assert.Nil(t, o.loadModuleConfig("module-broken"))
 }
 
 func Test_loadModuleConfigNoJobs(t *testing.T) {
 	o := New()
-	o.Name = "go.d"
-
+	o.Name = "test.d"
 	o.ConfigPath = multipath.New("./testdata")
-
 	assert.Nil(t, o.loadModuleConfig("module-no-jobs"))
 }
 
 func Test_loadModuleConfig(t *testing.T) {
 	o := New()
-	o.Name = "go.d"
-
+	o.Name = "test.d"
 	o.ConfigPath = multipath.New("./testdata")
-
+	o.ModulesConfigDirName = "test.d"
 	conf := o.loadModuleConfig("module1")
-
 	require.NotNil(t, conf)
-
 	assert.Equal(t, 3, len(conf.Jobs))
 }
 
 func Test_createModuleJobs(t *testing.T) {
 	o := New()
-	o.Name = "go.d"
-
+	o.Name = "test.d"
 	o.ConfigPath = multipath.New("./testdata")
 	o.Option = &cli.Option{}
-
 	reg := make(module.Registry)
 	reg.Register(
 		"module1",
