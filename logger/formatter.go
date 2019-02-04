@@ -20,7 +20,7 @@ type (
 	}
 )
 
-func newFormatter(out io.Writer, isCLI bool) *formatter {
+func newFormatter(out io.Writer, isCLI bool, prefix string) *formatter {
 	if isCLI {
 		return &formatter{
 			out:     out,
@@ -32,7 +32,7 @@ func newFormatter(out io.Writer, isCLI bool) *formatter {
 	return &formatter{
 		out:     out,
 		colored: false,
-		prefix:  "go.d ",
+		prefix:  prefix + " ",
 		flag:    log.Ldate | log.Ltime,
 		buf:     make([]byte, 0, 120),
 	}
