@@ -33,11 +33,10 @@ func (example) Check() bool { return true }
 func (example) Charts() *module.Charts { return charts.Copy() }
 
 func (e *example) Collect() map[string]int64 {
-	metrics := make(map[string]int64)
-	metrics["random0"] = rand.Int63n(100)
-	metrics["random1"] = rand.Int63n(100)
-
-	return metrics
+	return map[string]int64{
+		"random0": rand.Int63n(100),
+		"random1": rand.Int63n(100),
+	}
 }
 
 func main() {
@@ -58,7 +57,7 @@ func main() {
 
 func createPlugin(opt *cli.Option) *orchestrator.Orchestrator {
 	p := orchestrator.New()
-	p.Name = "go.d"
+	p.Name = "test.d"
 	p.Option = opt
 	p.Registry = make(module.Registry)
 	p.Registry.Register("example", module.Creator{Create: func() module.Module { return &example{} }})

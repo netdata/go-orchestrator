@@ -13,11 +13,9 @@ const (
 )
 
 var (
-	base      = New("base", "base")
+	base      = New("plugin", "base", "base")
 	initialID = int64(1)
 )
-
-var defaultFormatter = newFormatter(os.Stderr, isatty.IsTerminal(os.Stderr.Fd()))
 
 // Logger represents a logger object
 type Logger struct {
@@ -32,9 +30,9 @@ type Logger struct {
 }
 
 // New creates a new logger
-func New(modName, jobName string) *Logger {
+func New(pluginName, modName, jobName string) *Logger {
 	return &Logger{
-		formatter: defaultFormatter,
+		formatter: newFormatter(os.Stderr, isatty.IsTerminal(os.Stderr.Fd()), pluginName),
 		modName:   modName,
 		jobName:   jobName,
 		id:        createUniqueID(),
@@ -42,8 +40,8 @@ func New(modName, jobName string) *Logger {
 }
 
 // NewLimited creates a new limited logger
-func NewLimited(modName, jobName string) *Logger {
-	logger := New(modName, jobName)
+func NewLimited(pluginName, modName, jobName string) *Logger {
+	logger := New(pluginName, modName, jobName)
 	logger.limited = true
 	GlobalMsgCountWatcher.Register(logger)
 
@@ -137,4 +135,9 @@ func SetSeverity(severity Severity) {
 
 func createUniqueID() int64 {
 	return atomic.AddInt64(&initialID, 1)
+}
+
+// SetPluginName sets logger plugin name.
+func SetPluginName(name string, log *Logger) {
+	log.formatter.prefix = name + " "
 }

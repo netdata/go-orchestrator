@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"runtime"
 
+	"github.com/netdata/go-orchestrator/logger"
 	"github.com/netdata/go-orchestrator/pkg/multipath"
 )
 
@@ -12,6 +13,9 @@ func (o *Orchestrator) Setup() bool {
 		log.Critical("name not set")
 		return false
 	}
+
+	logger.SetPluginName(o.Name, log)
+
 	if o.Option == nil {
 		log.Critical("cli options not set")
 		return false

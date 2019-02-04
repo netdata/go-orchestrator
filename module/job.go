@@ -118,7 +118,7 @@ func (j *Job) Init() bool {
 		}
 	}()
 
-	limitedLogger := logger.NewLimited(j.ModuleName(), j.Name())
+	limitedLogger := logger.NewLimited(j.pluginName, j.ModuleName(), j.Name())
 	j.Logger = limitedLogger
 	j.module.SetLogger(limitedLogger)
 

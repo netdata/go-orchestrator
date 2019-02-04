@@ -46,10 +46,14 @@ func (m *moduleConfig) updateJobs(moduleUpdateEvery, pluginUpdateEvery int) {
 }
 
 func (o *Orchestrator) loadModuleConfig(name string) *moduleConfig {
-
 	log.Infof("loading '%s' configuration", name)
 
-	configPath, err := o.ConfigPath.Find(fmt.Sprintf("%s/%s.conf", o.Name, name))
+	dirName := o.ModulesConfigDirName
+	if dirName == "" {
+		dirName = o.Name
+	}
+
+	configPath, err := o.ConfigPath.Find(fmt.Sprintf("%s/%s.conf", dirName, name))
 	if err != nil {
 		log.Warningf("skipping '%s': %v", name, err)
 		return nil

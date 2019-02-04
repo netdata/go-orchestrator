@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	log = logger.New("orchestrator", "main")
+	log = logger.New("plugin", "main", "main")
 
 	cd, _             = os.Getwd()
 	defaultConfigPath = multipath.New(
@@ -80,12 +80,13 @@ func New() *Orchestrator {
 
 // Orchestrator represents orchestrator.
 type Orchestrator struct {
-	Name       string
-	Out        io.Writer
-	Registry   module.Registry
-	Option     *cli.Option
-	ConfigPath multipath.MultiPath
-	Config     *Config
+	Name                 string
+	Out                  io.Writer
+	Registry             module.Registry
+	Option               *cli.Option
+	ConfigPath           multipath.MultiPath
+	Config               *Config
+	ModulesConfigDirName string
 
 	configName string
 

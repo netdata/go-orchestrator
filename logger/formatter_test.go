@@ -9,7 +9,7 @@ import (
 
 func TestFormatter_Output_cli(t *testing.T) {
 	out := &bytes.Buffer{}
-	fmtter := newFormatter(out, true)
+	fmtter := newFormatter(out, true, "test")
 
 	fmtter.Output(INFO, "mod1", "job1", 1, "hello")
 	assert.NotRegexp(t, `\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}: `, out.String())
@@ -21,7 +21,7 @@ func TestFormatter_Output_cli(t *testing.T) {
 
 func TestFormatter_Output_file(t *testing.T) {
 	out := &bytes.Buffer{}
-	fmtter := newFormatter(out, false)
+	fmtter := newFormatter(out, false, "test")
 
 	fmtter.Output(INFO, "mod1", "job1", 1, "hello")
 	assert.Regexp(t, `\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}: `, out.String())
