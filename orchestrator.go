@@ -20,7 +20,6 @@ import (
 var (
 	log = logger.New("plugin", "main", "main")
 
-	cd, _             = os.Getwd()
 	defaultConfigPath = multipath.New(
 		os.Getenv("NETDATA_USER_CONFIG_DIR"),
 		os.Getenv("NETDATA_STOCK_CONFIG_DIR"),
@@ -96,13 +95,6 @@ type Orchestrator struct {
 
 	modules   module.Registry
 	loopQueue loopQueue
-}
-
-// RemoveFromQueue removes job from the loop queue by full name.
-func (o *Orchestrator) RemoveFromQueue(fullName string) {
-	if job := o.loopQueue.remove(fullName); job != nil {
-		job.Stop()
-	}
 }
 
 // Serve Serve

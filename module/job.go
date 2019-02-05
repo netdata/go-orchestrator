@@ -10,25 +10,19 @@ import (
 )
 
 const (
-	penaltyStep = 5
-	maxPenalty  = 600
+	penaltyStep        = 5
+	maxPenalty         = 600
+	defaultJobPriority = 70000
 )
 
-// Observer Observer
-type Observer interface {
-	RemoveFromQueue(fullName string)
-}
-
 // NewJob returns new job.
-func NewJob(pluginName string, moduleName string, module Module, out io.Writer, observer Observer) *Job {
+func NewJob(pluginName string, moduleName string, module Module, out io.Writer) *Job {
 	buf := &bytes.Buffer{}
 	return &Job{
 		pluginName: pluginName,
 		moduleName: moduleName,
 		module:     module,
 		out:        out,
-		observer:   observer,
-
 		runtimeChart: &Chart{
 			typeID: "netdata",
 			Title:  "Execution Time for",
@@ -43,7 +37,7 @@ func NewJob(pluginName string, moduleName string, module Module, out io.Writer, 
 		tick:      make(chan int),
 		buf:       buf,
 		apiWriter: apiWriter{Writer: buf},
-		priority:  70000,
+		priority:  defaultJobPriority,
 	}
 }
 
@@ -63,7 +57,6 @@ type Job struct {
 	panicked    bool
 
 	stopHook     chan struct{}
-	observer     Observer
 	runtimeChart *Chart
 	charts       *Charts
 	tick         chan int
@@ -201,8 +194,6 @@ func (j *Job) runOnce() {
 	metrics := j.collect()
 
 	if j.panicked {
-		j.observer.RemoveFromQueue(j.FullName())
-		j.module.Cleanup()
 		return
 	}
 
@@ -223,6 +214,7 @@ func (j Job) AutoDetectionRetry() int {
 }
 
 func (j *Job) collect() (result map[string]int64) {
+	j.panicked = false
 	defer func() {
 		if r := recover(); r != nil {
 			j.Errorf("PANIC: %v", r)

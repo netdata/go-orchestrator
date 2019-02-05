@@ -18,7 +18,7 @@ var (
 )
 
 func testNewJob() *Job {
-	return NewJob(testPluginName, testModName, nil, ioutil.Discard, nil)
+	return NewJob(testPluginName, testModName, nil, ioutil.Discard)
 }
 
 func TestNewJob(t *testing.T) {
@@ -210,8 +210,6 @@ func TestJob_MainLoop_Panic(t *testing.T) {
 	}
 	job := testNewJob()
 	job.module = m
-	obs := testObserver(false)
-	job.observer = &obs
 	job.UpdateEvery = 1
 
 	go func() {
@@ -225,20 +223,13 @@ func TestJob_MainLoop_Panic(t *testing.T) {
 	job.MainLoop()
 
 	assert.True(t, job.Panicked())
-	assert.True(t, bool(*job.observer.(*testObserver)))
 }
 
 func TestJob_Tick(t *testing.T) {
-	job := NewJob(testPluginName, testModName, nil, ioutil.Discard, nil)
+	job := NewJob(testPluginName, testModName, nil, ioutil.Discard)
 	for i := 0; i < 3; i++ {
 		job.Tick(i)
 	}
-}
-
-type testObserver bool
-
-func (t *testObserver) RemoveFromQueue(name string) {
-	*t = true
 }
 
 func TestJob_Start(t *testing.T) {
