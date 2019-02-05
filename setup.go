@@ -14,7 +14,10 @@ func (o *Orchestrator) Setup() bool {
 		return false
 	}
 
-	logger.SetPluginName(o.Name, log)
+	//TODO: fix
+	if !isatty.IsTerminal(os.Stdout.Fd()) {
+		logger.SetPluginName(o.Name, log)
+	}
 
 	if o.Option == nil {
 		log.Critical("cli options not set")
