@@ -45,6 +45,8 @@ func main() {
 	if opt.Debug {
 		logger.SetSeverity(logger.DEBUG)
 	}
+	
+	module.Register("example", module.Creator{Create: func() module.Module { return &example{} }})
 
 	p := newPlugin(opt)
 
@@ -59,7 +61,6 @@ func newPlugin(opt *cli.Option) *orchestrator.Orchestrator {
 	p := orchestrator.New()
 	p.Name = "test.d"
 	p.Option = opt
-	module.Register("example", module.Creator{Create: func() module.Module { return &example{} }})
 
 	return p
 }
