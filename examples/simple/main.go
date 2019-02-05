@@ -59,8 +59,7 @@ func newPlugin(opt *cli.Option) *orchestrator.Orchestrator {
 	p := orchestrator.New()
 	p.Name = "test.d"
 	p.Option = opt
-	p.Registry = make(module.Registry)
-	p.Registry.Register("example", module.Creator{Create: func() module.Module { return &example{} }})
+	module.Register("example", module.Creator{Create: func() module.Module { return &example{} }})
 
 	return p
 }
