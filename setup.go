@@ -2,10 +2,13 @@ package orchestrator
 
 import (
 	"fmt"
+	"os"
 	"runtime"
 
 	"github.com/netdata/go-orchestrator/logger"
 	"github.com/netdata/go-orchestrator/pkg/multipath"
+
+	"github.com/mattn/go-isatty"
 )
 
 func (o *Orchestrator) Setup() bool {
