@@ -190,6 +190,7 @@ LOOP:
 func (j *Job) runOnce() {
 	curTime := time.Now()
 	sinceLastRun := calcSinceLastRun(curTime, j.prevRun)
+	j.prevRun = curTime
 
 	metrics := j.collect()
 
@@ -198,7 +199,6 @@ func (j *Job) runOnce() {
 	}
 
 	if j.processMetrics(metrics, curTime, sinceLastRun) {
-		j.prevRun = curTime
 		j.retries = 0
 	} else {
 		j.retries++
