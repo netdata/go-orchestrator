@@ -12,6 +12,7 @@ type Option struct {
 	Debug       bool     `short:"d" long:"debug" description:"debug mode"`
 	Module      string   `short:"m" long:"modules" description:"modules name" default:"all"`
 	ConfigDir   []string `short:"c" long:"config" description:"config dir"`
+	Version     bool     `short:"v" long:"version" description:"display the version and exit"`
 }
 
 // Parse returns parsed command-line flags in Option struct
