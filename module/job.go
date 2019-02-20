@@ -25,7 +25,6 @@ func NewJob(pluginName string, moduleName string, module Module, out io.Writer) 
 		out:        out,
 		runtimeChart: &Chart{
 			typeID: "netdata",
-			Title:  "Execution Time for",
 			Units:  "ms",
 			Fam:    pluginName,
 			Ctx:    "netdata.go_plugin_execution_time", Priority: 145000,
@@ -227,6 +226,7 @@ func (j *Job) collect() (result map[string]int64) {
 func (j *Job) processMetrics(metrics map[string]int64, startTime time.Time, sinceLastRun int) bool {
 	if !j.runtimeChart.created {
 		j.runtimeChart.ID = fmt.Sprintf("execution_time_of_%s", j.FullName())
+		j.runtimeChart.Title = fmt.Sprintf("Execution Time for %s", j.FullName())
 		j.createChart(j.runtimeChart)
 	}
 
