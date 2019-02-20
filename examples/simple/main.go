@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"math/rand"
 	"os"
 
@@ -10,6 +11,8 @@ import (
 	"github.com/netdata/go-orchestrator/logger"
 	"github.com/netdata/go-orchestrator/module"
 )
+
+var version = "v0.0.0-example"
 
 var charts = module.Charts{
 	{
@@ -45,7 +48,11 @@ func main() {
 	if opt.Debug {
 		logger.SetSeverity(logger.DEBUG)
 	}
-	
+	if opt.Version {
+		fmt.Println(version)
+		os.Exit(0)
+	}
+
 	module.Register("example", module.Creator{Create: func() module.Module { return &example{} }})
 
 	p := newPlugin(opt)
