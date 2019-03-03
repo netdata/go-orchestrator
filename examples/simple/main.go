@@ -12,18 +12,7 @@ import (
 	"github.com/netdata/go-orchestrator/module"
 )
 
-var version = "v0.0.0-example"
-
-var charts = module.Charts{
-	{
-		ID:    "random",
-		Title: "A Random Number", Units: "random", Fam: "random",
-		Dims: module.Dims{
-			{ID: "random0", Name: "random 0"},
-			{ID: "random1", Name: "random 1"},
-		},
-	},
-}
+var version = "v0.0.1-example"
 
 type example struct{ module.Base }
 
@@ -33,7 +22,18 @@ func (example) Init() bool { return true }
 
 func (example) Check() bool { return true }
 
-func (example) Charts() *module.Charts { return charts.Copy() }
+func (example) Charts() *module.Charts {
+	return &module.Charts{
+		{
+			ID:    "random",
+			Title: "A Random Number", Units: "random", Fam: "random",
+			Dims: module.Dims{
+				{ID: "random0", Name: "random 0"},
+				{ID: "random1", Name: "random 1"},
+			},
+		},
+	}
+}
 
 func (e *example) Collect() map[string]int64 {
 	return map[string]int64{
