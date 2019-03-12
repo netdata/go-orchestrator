@@ -46,7 +46,7 @@ func (m MockModule) Collect() map[string]int64 {
 
 // Cleanup sets CleanupDone to true
 func (m *MockModule) Cleanup() {
-	if m.ChartsFunc != nil {
+	if m.CleanupFunc != nil {
 		m.CleanupFunc()
 	}
 	m.CleanupDone = true

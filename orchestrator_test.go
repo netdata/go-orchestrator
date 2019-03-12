@@ -78,6 +78,7 @@ func TestOrchestrator_lifecycle(t *testing.T) {
 	for _, job := range o.loopQueue.queue {
 		job.Stop()
 	}
+	time.Sleep(time.Second)
 
 	assert.Equal(t, 1, counter["normal_init"])
 	assert.Equal(t, 1, counter["fail_init"])
