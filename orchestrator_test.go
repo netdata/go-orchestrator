@@ -91,16 +91,20 @@ func TestOrchestrator_lifecycle(t *testing.T) {
 	}
 	time.Sleep(time.Second)
 
-	assert.Equal(t, 1, counter["normal_init"])
-	assert.Equal(t, 1, counter["fail_init"])
-	assert.Equal(t, 1, counter["normal_check"])
-	assert.Equal(t, 1, counter["fail_check"])
-	assert.Equal(t, 1, counter["normal_charts"])
-	assert.Equal(t, 0, counter["fail_charts"])
-	assert.Equal(t, 2, counter["normal_collect"])
-	assert.Equal(t, 0, counter["fail_collect"])
-	assert.Equal(t, 1, counter["normal_cleanup"])
-	assert.Equal(t, 1, counter["fail_cleanup"])
+	func() {
+		mtx.Lock()
+		defer mtx.Unlock()
+		assert.Equal(t, 1, counter["normal_init"])
+		assert.Equal(t, 1, counter["fail_init"])
+		assert.Equal(t, 1, counter["normal_check"])
+		assert.Equal(t, 1, counter["fail_check"])
+		assert.Equal(t, 1, counter["normal_charts"])
+		assert.Equal(t, 0, counter["fail_charts"])
+		assert.Equal(t, 2, counter["normal_collect"])
+		assert.Equal(t, 0, counter["fail_collect"])
+		assert.Equal(t, 1, counter["normal_cleanup"])
+		assert.Equal(t, 1, counter["fail_cleanup"])
+	}()
 }
 
 func TestOrchestrator_Serve(t *testing.T) {
