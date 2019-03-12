@@ -26,21 +26,28 @@ func TestOrchestrator_lifecycle(t *testing.T) {
 	o := New()
 	o.Name = "test.d"
 
+	var mtx sync.Mutex
 	counter := map[string]int{}
 
 	mod := func(name string) module.Module {
 		return &module.MockModule{
 			InitFunc: func() bool {
+				mtx.Lock()
+				defer mtx.Unlock()
 				counter[name+"_init"]++
 				log.Infof("[%s] init", name)
 				return true
 			},
 			CheckFunc: func() bool {
+				mtx.Lock()
+				defer mtx.Unlock()
 				counter[name+"_check"]++
 				log.Infof("[%s] check", name)
 				return name != "fail"
 			},
 			ChartsFunc: func() *module.Charts {
+				mtx.Lock()
+				defer mtx.Unlock()
 				counter[name+"_charts"]++
 				log.Infof("[%s] charts", name)
 				return &module.Charts{
@@ -48,11 +55,15 @@ func TestOrchestrator_lifecycle(t *testing.T) {
 				}
 			},
 			CollectFunc: func() map[string]int64 {
+				mtx.Lock()
+				defer mtx.Unlock()
 				counter[name+"_collect"]++
 				log.Infof("[%s] collect", name)
 				return map[string]int64{"id1": 1}
 			},
 			CleanupFunc: func() {
+				mtx.Lock()
+				defer mtx.Unlock()
 				counter[name+"_cleanup"]++
 				log.Infof("[%s] cleanup", name)
 			},
