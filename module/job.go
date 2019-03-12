@@ -124,16 +124,20 @@ func (j *Job) Init() bool {
 
 // Check calls module Check and returns its value.
 // It handles panic. In case of panic it calls module Cleanup.
-func (j *Job) Check() bool {
+func (j *Job) Check() (ok bool) {
 	defer func() {
 		if r := recover(); r != nil {
+			ok = false
 			j.Errorf("PANIC %v", r)
 			j.panicked = true
 			j.module.Cleanup()
 		}
 	}()
-
-	return j.module.Check()
+	ok = j.module.Check()
+	if !ok {
+		j.module.Cleanup()
+	}
+	return
 }
 
 // PostCheck calls module Charts.

@@ -8,6 +8,7 @@ type MockModule struct {
 	CheckFunc   func() bool
 	ChartsFunc  func() *Charts
 	CollectFunc func() map[string]int64
+	CleanupFunc func()
 	CleanupDone bool
 }
 
@@ -45,5 +46,8 @@ func (m MockModule) Collect() map[string]int64 {
 
 // Cleanup sets CleanupDone to true
 func (m *MockModule) Cleanup() {
+	if m.ChartsFunc != nil {
+		m.CleanupFunc()
+	}
 	m.CleanupDone = true
 }
