@@ -22,6 +22,91 @@ func TestNew(t *testing.T) {
 	assert.NotNil(t, o.Config)
 }
 
+func TestOrchestrator_lifecycle(t *testing.T) {
+	o := New()
+	o.Name = "test.d"
+
+	var mtx sync.Mutex
+	counter := map[string]int{}
+
+	mod := func(name string) module.Module {
+		return &module.MockModule{
+			InitFunc: func() bool {
+				mtx.Lock()
+				defer mtx.Unlock()
+				counter[name+"_init"]++
+				log.Infof("[%s] init", name)
+				return true
+			},
+			CheckFunc: func() bool {
+				mtx.Lock()
+				defer mtx.Unlock()
+				counter[name+"_check"]++
+				log.Infof("[%s] check", name)
+				return name != "fail"
+			},
+			ChartsFunc: func() *module.Charts {
+				mtx.Lock()
+				defer mtx.Unlock()
+				counter[name+"_charts"]++
+				log.Infof("[%s] charts", name)
+				return &module.Charts{
+					&module.Chart{ID: "id", Title: "title", Units: "units", Dims: module.Dims{{ID: "id1"}}},
+				}
+			},
+			CollectFunc: func() map[string]int64 {
+				mtx.Lock()
+				defer mtx.Unlock()
+				counter[name+"_collect"]++
+				log.Infof("[%s] collect", name)
+				return map[string]int64{"id1": 1}
+			},
+			CleanupFunc: func() {
+				mtx.Lock()
+				defer mtx.Unlock()
+				counter[name+"_cleanup"]++
+				log.Infof("[%s] cleanup", name)
+			},
+		}
+	}
+
+	o.Option = &cli.Option{Module: "all"}
+	o.ConfigPath = multipath.New("./testdata")
+	o.Registry = module.Registry{
+		"normal": module.Creator{Create: func() module.Module { return mod("normal") }},
+		"fail":   module.Creator{Create: func() module.Module { return mod("fail") }},
+	}
+	o.configName = "test.d.conf.yml"
+
+	require.True(t, o.Setup())
+
+	go o.Serve()
+
+	time.Sleep(time.Second * 2)
+
+	o.stop()
+
+	for _, job := range o.loopQueue.queue {
+		job.Stop()
+	}
+	time.Sleep(time.Second)
+
+	func() {
+		mtx.Lock()
+		defer mtx.Unlock()
+		assert.Equal(t, 1, counter["normal_init"])
+		assert.Equal(t, 1, counter["fail_init"])
+		assert.Equal(t, 1, counter["normal_check"])
+		assert.Equal(t, 1, counter["fail_check"])
+		assert.Equal(t, 1, counter["normal_charts"])
+		assert.Equal(t, 0, counter["fail_charts"])
+		assert.Equal(t, 2, counter["normal_collect"])
+		assert.Equal(t, 0, counter["fail_collect"])
+		assert.Equal(t, 1, counter["normal_cleanup"])
+		assert.Equal(t, 1, counter["fail_cleanup"])
+	}()
+}
+
 func TestOrchestrator_Serve(t *testing.T) {
 	o := New()
 	o.Name = "test.d"

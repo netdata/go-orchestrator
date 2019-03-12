@@ -127,7 +127,7 @@ func TestJob_Check(t *testing.T) {
 
 	assert.False(t, job.Check())
 	assert.False(t, job.Panicked())
-	assert.False(t, m.CleanupDone)
+	assert.True(t, m.CleanupDone)
 
 	// PANIC case
 	m = &MockModule{
