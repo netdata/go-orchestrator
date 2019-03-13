@@ -305,7 +305,7 @@ func (j *Job) createChart(chart *Chart) {
 		)
 	}
 	for _, v := range chart.Vars {
-		_ = j.apiWriter.dimSet(
+		_ = j.apiWriter.varSet(
 			v.ID,
 			v.Value,
 		)
