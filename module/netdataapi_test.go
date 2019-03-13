@@ -85,11 +85,11 @@ func TestNetdataAPI_begin(t *testing.T) {
 	)
 }
 
-func TestNetdataAPI_set(t *testing.T) {
+func TestNetdataAPI_dimSet(t *testing.T) {
 	b := &bytes.Buffer{}
 	netdataAPI := apiWriter{Writer: b}
 
-	_ = netdataAPI.set("id", 100)
+	_ = netdataAPI.dimSet("id", 100)
 
 	assert.Equal(
 		t,
@@ -98,15 +98,28 @@ func TestNetdataAPI_set(t *testing.T) {
 	)
 }
 
-func TestNetdataAPI_setEmpty(t *testing.T) {
+func TestNetdataAPI_dimSetEmpty(t *testing.T) {
 	b := &bytes.Buffer{}
 	netdataAPI := apiWriter{Writer: b}
 
-	_ = netdataAPI.setEmpty("id")
+	_ = netdataAPI.dimSetEmpty("id")
 
 	assert.Equal(
 		t,
 		"SET id = \n",
+		b.String(),
+	)
+}
+
+func TestNetdataAPI_varSet(t *testing.T) {
+	b := &bytes.Buffer{}
+	netdataAPI := apiWriter{Writer: b}
+
+	_ = netdataAPI.varSet("id", 100)
+
+	assert.Equal(
+		t,
+		"VARIABLE CHART id = 100\n",
 		b.String(),
 	)
 }

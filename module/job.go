@@ -308,7 +308,7 @@ func (j *Job) createChart(chart *Chart) {
 		if v.Value == 0 {
 			continue
 		}
-		_ = j.apiWriter.set(
+		_ = j.apiWriter.dimSet(
 			v.ID,
 			v.Value,
 		)
@@ -333,15 +333,15 @@ func (j *Job) updateChart(chart *Chart, data map[string]int64, sinceLastRun int)
 
 	for _, dim := range chart.Dims {
 		if v, ok := data[dim.ID]; ok {
-			_ = j.apiWriter.set(dim.ID, v)
+			_ = j.apiWriter.dimSet(dim.ID, v)
 			updated++
 		} else {
-			_ = j.apiWriter.setEmpty(dim.ID)
+			_ = j.apiWriter.dimSetEmpty(dim.ID)
 		}
 	}
 	for _, variable := range chart.Vars {
 		if v, ok := data[variable.ID]; ok {
-			_ = j.apiWriter.set(variable.ID, v)
+			_ = j.apiWriter.varSet(variable.ID, v)
 		}
 	}
 

@@ -58,15 +58,21 @@ func (w *apiWriter) begin(typeID string, ID string, msSince int) error {
 	return err
 }
 
-// set set the value of a dimension for the initialized chart
-func (w *apiWriter) set(ID string, value int64) error {
+// dimSet sets the value of a dimension for the initialized chart
+func (w *apiWriter) dimSet(ID string, value int64) error {
 	_, err := fmt.Fprintf(w, "SET %s = %d\n", ID, value)
 	return err
 }
 
-// set set the empty value of a dimension for the initialized chart
-func (w *apiWriter) setEmpty(ID string) error {
+// dimSetEmpty sets the empty value of a dimension for the initialized chart
+func (w *apiWriter) dimSetEmpty(ID string) error {
 	_, err := fmt.Fprintf(w, "SET %s = \n", ID)
+	return err
+}
+
+// varSet sets the value of a variable for the initialized chart
+func (w *apiWriter) varSet(ID string, value int64) error {
+	_, err := fmt.Fprintf(w, "VARIABLE CHART %s = %d\n", ID, value)
 	return err
 }
 
