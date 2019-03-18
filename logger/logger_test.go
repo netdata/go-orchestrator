@@ -39,18 +39,20 @@ func TestLogger_Critical(t *testing.T) {
 	buf := bytes.Buffer{}
 	logger := New("", "", "")
 	logger.formatter.SetOutput(&buf)
-
+	logger.formatter.flag = log.Lshortfile
 	logger.Critical()
 	assert.Contains(t, buf.String(), CRITICAL.ShortString())
+	assert.Contains(t, buf.String(), " logger_test.go")
 }
 
 func TestLogger_Criticalf(t *testing.T) {
 	buf := bytes.Buffer{}
 	logger := New("", "", "")
 	logger.formatter.SetOutput(&buf)
-
+	logger.formatter.flag = log.Lshortfile
 	logger.Criticalf("")
 	assert.Contains(t, buf.String(), CRITICAL.ShortString())
+	assert.Contains(t, buf.String(), " logger_test.go")
 }
 
 func TestLogger_Error(t *testing.T) {
