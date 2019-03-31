@@ -15,6 +15,16 @@ const (
 var (
 	base      = New("plugin", "base", "base")
 	initialID = int64(1)
+	isCLI     = func() bool {
+		switch os.Getenv("NETDATA_FORCE_COLOR") {
+		case "1", "true":
+			return true
+		case "0", "false":
+			return true
+		default:
+			return isatty.IsTerminal(os.Stderr.Fd())
+		}
+	}()
 )
 
 // Logger represents a logger object
@@ -32,7 +42,7 @@ type Logger struct {
 // New creates a new logger
 func New(pluginName, modName, jobName string) *Logger {
 	return &Logger{
-		formatter: newFormatter(os.Stderr, isatty.IsTerminal(os.Stderr.Fd()), pluginName),
+		formatter: newFormatter(os.Stderr, isCLI, pluginName),
 		modName:   modName,
 		jobName:   jobName,
 		id:        createUniqueID(),
