@@ -157,7 +157,7 @@ func (l *formatter) formatFile(file string, line int) {
 	}
 
 	if l.colored {
-		l.buf = append(l.buf, "\x1b[1;30m"...)
+		l.buf = append(l.buf, "\x1b[0;90m"...)
 	}
 	l.buf = append(l.buf, file...)
 	l.buf = append(l.buf, ':')
