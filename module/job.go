@@ -10,9 +10,8 @@ import (
 )
 
 const (
-	penaltyStep        = 5
-	maxPenalty         = 600
-	defaultJobPriority = 70000
+	penaltyStep = 5
+	maxPenalty  = 600
 )
 
 // NewJob returns new job.
@@ -36,7 +35,6 @@ func NewJob(pluginName string, moduleName string, module Module, out io.Writer) 
 		tick:      make(chan int),
 		buf:       buf,
 		apiWriter: apiWriter{Writer: buf},
-		priority:  defaultJobPriority,
 	}
 }
 
@@ -45,6 +43,7 @@ type Job struct {
 	Nam             string `yaml:"name"`
 	UpdateEvery     int    `yaml:"update_every"`
 	AutoDetectRetry int    `yaml:"autodetection_retry"`
+	Priority        int    `yaml:"priority"`
 
 	*logger.Logger
 
@@ -63,9 +62,8 @@ type Job struct {
 	buf          *bytes.Buffer
 	apiWriter    apiWriter
 
-	priority int
-	retries  int
-	prevRun  time.Time
+	retries int
+	prevRun time.Time
 }
 
 // FullName returns full name.
@@ -272,8 +270,8 @@ func (j *Job) processMetrics(metrics map[string]int64, startTime time.Time, sinc
 
 func (j *Job) createChart(chart *Chart) {
 	if chart.Priority == 0 {
-		chart.Priority = j.priority
-		j.priority++
+		chart.Priority = j.Priority
+		j.Priority++
 	}
 	_ = j.apiWriter.chart(
 		firstNotEmpty(chart.typeID, j.FullName()),
