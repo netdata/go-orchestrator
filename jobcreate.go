@@ -34,9 +34,15 @@ type moduleConfig struct {
 	name string
 }
 
-func (m *moduleConfig) updateJobs(moduleUpdateEvery, pluginUpdateEvery int) {
-	if moduleUpdateEvery > 0 {
-		m.UpdateEvery = moduleUpdateEvery
+func (m *moduleConfig) updateJobs(defaults module.Defaults, minUpdateEvery int) {
+	if defaults.UpdateEvery > 0 {
+		m.UpdateEvery = defaults.UpdateEvery
+	}
+	if defaults.AutoDetectionRetry > 0 {
+		m.AutoDetectionRetry = defaults.AutoDetectionRetry
+	}
+	if defaults.Priority > 0 {
+		m.Priority = defaults.Priority
 	}
 
 	for _, job := range m.Jobs {
@@ -52,8 +58,8 @@ func (m *moduleConfig) updateJobs(moduleUpdateEvery, pluginUpdateEvery int) {
 			job["priority"] = m.Priority
 		}
 
-		if v, ok := job["update_every"].(int); ok && v < pluginUpdateEvery {
-			job["update_every"] = pluginUpdateEvery
+		if v, ok := job["update_every"].(int); ok && v < minUpdateEvery {
+			job["update_every"] = minUpdateEvery
 		}
 	}
 }
@@ -99,7 +105,7 @@ func (o *Orchestrator) createModuleJobs(modConf *moduleConfig) []Job {
 	var jobs []Job
 
 	creator := o.Registry[modConf.name]
-	modConf.updateJobs(creator.UpdateEvery, o.Option.UpdateEvery)
+	modConf.updateJobs(creator.Defaults, o.Option.UpdateEvery)
 
 	jobName := func(conf map[string]interface{}) interface{} {
 		if name, ok := conf["name"]; ok {

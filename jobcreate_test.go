@@ -125,7 +125,7 @@ func TestModuleConfig_updateJobs(t *testing.T) {
 		{"name": "job1"},
 		{"name": "job2", "update_every": 10},
 	}
-	conf.updateJobs(0, 0)
+	conf.updateJobs(module.Defaults{}, 0)
 
 	assert.Equal(
 		t,
@@ -153,7 +153,7 @@ func TestModuleConfig_UpdateJobsRewriteModuleUpdateEvery(t *testing.T) {
 		{"name": "job1"},
 		{"name": "job2", "update_every": 10},
 	}
-	conf.updateJobs(20, 0)
+	conf.updateJobs(module.Defaults{UpdateEvery: 20}, 0)
 
 	assert.Equal(
 		t,
@@ -181,7 +181,7 @@ func TestModuleConfig_UpdateJobsRewritePluginUpdateEvery(t *testing.T) {
 		{"name": "job1"},
 		{"name": "job2", "update_every": 10},
 	}
-	conf.updateJobs(0, 5)
+	conf.updateJobs(module.Defaults{}, 5)
 
 	assert.Equal(
 		t,

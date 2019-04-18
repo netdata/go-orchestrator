@@ -68,7 +68,7 @@ func (o *Orchestrator) Setup() bool {
 		if !isAll && o.Option.Module != name {
 			continue
 		}
-		if isAll && creator.DisabledByDefault && !o.Config.isModuleEnabled(name, true) {
+		if isAll && creator.Disabled && !o.Config.isModuleEnabled(name, true) {
 			log.Infof("module '%s' disabled by default", name)
 			continue
 		}
