@@ -130,7 +130,7 @@ func TestOrchestrator_Setup(t *testing.T) {
 	o.Registry = module.Registry{
 		"module1": module.Creator{},
 		"module2": module.Creator{},
-		"module3": module.Creator{DisabledByDefault: true},
+		"module3": module.Creator{Defaults: module.Defaults{Disabled: true}},
 	}
 	o.configName = "test.d.conf.yml"
 	assert.True(t, o.Setup())
