@@ -34,20 +34,20 @@ func (w *apiWriter) chart(
 	return err
 }
 
-//dimension defines a new dimension for the chart
+//dimension defines a new dimension for the chart.
 func (w *apiWriter) dimension(
 	ID string,
 	name string,
 	algorithm dimAlgo,
 	multiplier dimDivMul,
 	divisor dimDivMul,
-	hidden dimHidden) error {
+	options DimOpts) error {
 	_, err := fmt.Fprintf(w, "DIMENSION '%s' '%s' '%s' '%s' '%s' '%s'\n",
-		ID, name, algorithm, multiplier, divisor, hidden)
+		ID, name, algorithm, multiplier, divisor, options)
 	return err
 }
 
-// begin initialize data collection for a chart
+// begin initialize data collection for a chart.
 func (w *apiWriter) begin(typeID string, ID string, msSince int) error {
 	var err error
 	if msSince > 0 {
@@ -58,31 +58,31 @@ func (w *apiWriter) begin(typeID string, ID string, msSince int) error {
 	return err
 }
 
-// dimSet sets the value of a dimension for the initialized chart
+// dimSet sets the value of a dimension for the initialized chart.
 func (w *apiWriter) dimSet(ID string, value int64) error {
 	_, err := fmt.Fprintf(w, "SET %s = %d\n", ID, value)
 	return err
 }
 
-// dimSetEmpty sets the empty value of a dimension for the initialized chart
+// dimSetEmpty sets the empty value of a dimension for the initialized chart.
 func (w *apiWriter) dimSetEmpty(ID string) error {
 	_, err := fmt.Fprintf(w, "SET %s = \n", ID)
 	return err
 }
 
-// varSet sets the value of a variable for the initialized chart
+// varSet sets the value of a variable for the initialized chart.
 func (w *apiWriter) varSet(ID string, value int64) error {
 	_, err := fmt.Fprintf(w, "VARIABLE CHART %s = %d\n", ID, value)
 	return err
 }
 
-// end complete data collection for the initialized chart
+// end complete data collection for the initialized chart.
 func (w *apiWriter) end() error {
 	_, err := fmt.Fprintf(w, "END\n\n")
 	return err
 }
 
-// flush ignore the last collected values
+// flush ignore the last collected values.
 func (w *apiWriter) flush() error {
 	_, err := fmt.Fprintf(w, "FLUSH\n")
 	return err
