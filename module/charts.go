@@ -9,9 +9,8 @@ import (
 )
 
 type (
-	dimAlgo   string
 	chartType string
-	dimHidden bool
+	dimAlgo   string
 	dimDivMul int
 )
 
@@ -54,13 +53,6 @@ func (c chartType) String() string {
 	return ""
 }
 
-func (d dimHidden) String() string {
-	if d {
-		return "hidden"
-	}
-	return ""
-}
-
 func (d dimDivMul) String() string {
 	if d != 0 {
 		return strconv.Itoa(int(d))
@@ -69,8 +61,16 @@ func (d dimDivMul) String() string {
 }
 
 type (
-	// Charts is a collection of ChartsFunc.
+	// Charts is a collection of Charts.
 	Charts []*Chart
+
+	// Opts represents chart options.
+	Opts struct {
+		Obsolete   bool
+		Detail     bool
+		StoreFirst bool
+		Hidden     bool
+	}
 
 	// Chart represents a chart.
 	// For the full description please visit https://docs.netdata.cloud/collectors/plugins.d/#chart
@@ -100,27 +100,26 @@ type (
 		// updated flag is used to indicate whether the chart was updated on last data collection interval.
 		updated bool
 	}
-	// Opts represents chart options.
-	Opts struct {
+
+	// DimOpts represents dimension options.
+	DimOpts struct {
 		Obsolete   bool
-		Detail     bool
-		StoreFirst bool
 		Hidden     bool
+		NoReset    bool
+		NoOverflow bool
 	}
-	// Dims is a collection of dims.
-	Dims []*Dim
-	// Vars is a collection of vars.
-	Vars []*Var
 
 	// Dim represents a chart dimension.
 	// For detailed description please visit https://docs.netdata.cloud/collectors/plugins.d/#dimension.
 	Dim struct {
-		ID     string
-		Name   string
-		Algo   dimAlgo
-		Mul    dimDivMul
-		Div    dimDivMul
-		Hidden dimHidden
+		ID   string
+		Name string
+		Algo dimAlgo
+		Mul  dimDivMul
+		Div  dimDivMul
+		DimOpts
+
+		remove bool
 	}
 
 	// Var represents a chart variable.
@@ -129,22 +128,46 @@ type (
 		ID    string
 		Value int64
 	}
+
+	// Dims is a collection of dims.
+	Dims []*Dim
+	// Vars is a collection of vars.
+	Vars []*Var
 )
 
 func (o Opts) String() string {
 	var opts []string
 
-	if o.Obsolete {
-		opts = append(opts, "obsolete")
-	}
 	if o.Detail {
 		opts = append(opts, "detail")
+	}
+	if o.Hidden {
+		opts = append(opts, "hidden")
+	}
+	if o.Obsolete {
+		opts = append(opts, "obsolete")
 	}
 	if o.StoreFirst {
 		opts = append(opts, "store_first")
 	}
+
+	return strings.Join(opts, " ")
+}
+
+func (o DimOpts) String() string {
+	var opts []string
+
 	if o.Hidden {
 		opts = append(opts, "hidden")
+	}
+	if o.NoOverflow {
+		opts = append(opts, "nooverflow")
+	}
+	if o.NoReset {
+		opts = append(opts, "noreset")
+	}
+	if o.Obsolete {
+		opts = append(opts, "obsolete")
 	}
 
 	return strings.Join(opts, " ")
@@ -153,10 +176,11 @@ func (o Opts) String() string {
 // Add adds (appends) a variable number of Charts.
 func (c *Charts) Add(charts ...*Chart) error {
 	for _, chart := range charts {
-		if err := checkChart(chart); err != nil {
+		err := checkChart(chart)
+		if err != nil {
 			return fmt.Errorf("error on adding chart : %s", err)
 		}
-		if c.index(chart.ID) != -1 {
+		if c.Has(chart.ID) {
 			return fmt.Errorf("error on adding chart : '%s' is already in charts", chart.ID)
 		}
 		*c = append(*c, chart)
@@ -176,11 +200,7 @@ func (c Charts) Get(chartID string) *Chart {
 
 // Has returns true if ChartsFunc contain the chart with the given ID, false otherwise.
 func (c Charts) Has(chartID string) bool {
-	idx := c.index(chartID)
-	if idx == -1 {
-		return false
-	}
-	return true
+	return c.index(chartID) != -1
 }
 
 // Remove removes the chart from Charts by ID.
@@ -220,18 +240,35 @@ func (c *Chart) MarkNotCreated() {
 	c.created = false
 }
 
-// MarkRemove changes 'remove' chart flag to true.
+// MarkRemove sets 'remove' flag and Obsolete option to true.
 // Use it to remove chart in runtime.
 func (c *Chart) MarkRemove() {
+	c.Obsolete = true
 	c.remove = true
+}
+
+// MarkDimRemove sets 'remove' flag, Obsolete and optionally Hidden options to true.
+// Use it to remove dimension in runtime.
+func (c *Chart) MarkDimRemove(dimID string, hide bool) error {
+	if !c.HasDim(dimID) {
+		return fmt.Errorf("chart '%s' has no '%s' dimension", c.ID, dimID)
+	}
+	dim := c.GetDim(dimID)
+	dim.Obsolete = true
+	if hide {
+		dim.Hidden = true
+	}
+	dim.remove = true
+	return nil
 }
 
 // AddDim adds new dimension to the chart dimensions.
 func (c *Chart) AddDim(newDim *Dim) error {
-	if err := checkDim(newDim); err != nil {
+	err := checkDim(newDim)
+	if err != nil {
 		return fmt.Errorf("error on adding dim to chart '%s' : %s", c.ID, err)
 	}
-	if c.indexDim(newDim.ID) != -1 {
+	if c.HasDim(newDim.ID) {
 		return fmt.Errorf("error on adding dim : '%s' is already in chart '%s' dims", newDim.ID, c.ID)
 	}
 	c.Dims = append(c.Dims, newDim)
@@ -241,7 +278,8 @@ func (c *Chart) AddDim(newDim *Dim) error {
 
 // AddVar adds new variable to the chart variables.
 func (c *Chart) AddVar(newVar *Var) error {
-	if err := checkVar(newVar); err != nil {
+	err := checkVar(newVar)
+	if err != nil {
 		return fmt.Errorf("error on adding var to chart '%s' : %s", c.ID, err)
 	}
 	if c.indexVar(newVar.ID) != -1 {
@@ -254,10 +292,11 @@ func (c *Chart) AddVar(newVar *Var) error {
 
 // GetDim returns dimension by ID.
 func (c *Chart) GetDim(dimID string) *Dim {
-	if idx := c.indexDim(dimID); idx != -1 {
-		return c.Dims[idx]
+	idx := c.indexDim(dimID)
+	if idx == -1 {
+		return nil
 	}
-	return nil
+	return c.Dims[idx]
 }
 
 // RemoveDim removes dimension by ID.
@@ -319,11 +358,12 @@ func (v Var) copy() *Var {
 	return &v
 }
 
-// CheckCharts checks charts
+// CheckCharts checks charts.
 func CheckCharts(charts ...*Chart) error {
 	for _, chart := range charts {
-		if err := checkChart(chart); err != nil {
-			return err
+		err := checkChart(chart)
+		if err != nil {
+			return fmt.Errorf("chart '%s' : %v", chart.ID, err)
 		}
 	}
 	return nil
@@ -331,29 +371,30 @@ func CheckCharts(charts ...*Chart) error {
 
 func checkChart(chart *Chart) error {
 	if chart.ID == "" {
-		return errors.New("empty chart id")
+		return errors.New("empty ID")
 	}
 
 	if chart.Title == "" {
-		return fmt.Errorf("empty title in chart '%s'", chart.ID)
+		return errors.New("empty Title")
 	}
 
 	if chart.Units == "" {
-		return fmt.Errorf("empty units in chart '%s'", chart.ID)
+		return errors.New("empty Units")
 	}
 
 	if id := checkID(chart.ID); id != -1 {
-		return fmt.Errorf("unacceptable symbol in chart id '%s' : '%s'", chart.ID, string(id))
+		return fmt.Errorf("unacceptable symbol in ID : '%s'", string(id))
 	}
 
 	set := make(map[string]bool)
 
 	for _, d := range chart.Dims {
-		if err := checkDim(d); err != nil {
+		err := checkDim(d)
+		if err != nil {
 			return err
 		}
 		if set[d.ID] {
-			return fmt.Errorf("duplicate dim '%s' in chart '%s'", d.ID, chart.ID)
+			return fmt.Errorf("duplicate dim '%s'", d.ID)
 		}
 		set[d.ID] = true
 	}
@@ -365,7 +406,7 @@ func checkChart(chart *Chart) error {
 			return err
 		}
 		if set[v.ID] {
-			return fmt.Errorf("duplicate var '%s' in chart '%s'", v.ID, chart.ID)
+			return fmt.Errorf("duplicate var '%s'", v.ID)
 		}
 		set[v.ID] = true
 	}
@@ -374,20 +415,20 @@ func checkChart(chart *Chart) error {
 
 func checkDim(d *Dim) error {
 	if d.ID == "" {
-		return errors.New("empty dim id")
+		return errors.New("empty dim ID")
 	}
 	if id := checkID(d.ID); id != -1 {
-		return fmt.Errorf("unacceptable symbol in dim id '%s' : '%s'", d.ID, string(id))
+		return fmt.Errorf("unacceptable symbol in dim ID '%s' : '%s'", d.ID, string(id))
 	}
 	return nil
 }
 
 func checkVar(v *Var) error {
 	if v.ID == "" {
-		return errors.New("empty var id")
+		return errors.New("empty var ID")
 	}
 	if id := checkID(v.ID); id != -1 {
-		return fmt.Errorf("unacceptable symbol in var id '%s' : '%s'", v.ID, string(id))
+		return fmt.Errorf("unacceptable symbol in var ID '%s' : '%s'", v.ID, string(id))
 	}
 	return nil
 }

@@ -39,11 +39,6 @@ func TestChartType_String(t *testing.T) {
 	assert.Equal(t, "", chartType("wrong").String())
 }
 
-func TestDimHidden_String(t *testing.T) {
-	assert.Equal(t, "", dimHidden(false).String())
-	assert.Equal(t, "hidden", dimHidden(true).String())
-}
-
 func TestDimDivMul_String(t *testing.T) {
 	assert.Equal(t, "", dimDivMul(0).String())
 	assert.Equal(t, "1", dimDivMul(1).String())
@@ -54,14 +49,29 @@ func TestOpts_String(t *testing.T) {
 	assert.Equal(t, "", Opts{}.String())
 	assert.Equal(
 		t,
-		"obsolete detail store_first hidden",
-		Opts{Obsolete: true, Detail: true, StoreFirst: true, Hidden: true}.String())
+		"detail hidden obsolete store_first",
+		Opts{Detail: true, Hidden: true, Obsolete: true, StoreFirst: true}.String())
 
 	assert.Equal(
 		t,
-		"obsolete hidden",
+		"hidden obsolete",
 		Opts{Obsolete: true, Detail: false, StoreFirst: false, Hidden: true}.String(),
 	)
+}
+
+func TestDimOpts_String(t *testing.T) {
+	assert.Equal(t, "", DimOpts{}.String())
+	assert.Equal(
+		t,
+		"hidden nooverflow noreset obsolete",
+		DimOpts{Hidden: true, NoOverflow: true, NoReset: true, Obsolete: true}.String())
+
+	assert.Equal(
+		t,
+		"hidden obsolete",
+		DimOpts{Hidden: true, NoOverflow: false, NoReset: false, Obsolete: true}.String(),
+	)
+
 }
 
 func TestCharts_Copy(t *testing.T) {
@@ -71,7 +81,7 @@ func TestCharts_Copy(t *testing.T) {
 	}
 	copied := orig.Copy()
 
-	require.False(t, orig == copied, "copied ChartsFunc points to the same address")
+	require.False(t, orig == copied, "copied Charts points to the same address")
 	require.Len(t, *orig, len(*copied))
 
 	for idx := range *orig {
@@ -215,11 +225,23 @@ func TestChart_MarkNotCreated(t *testing.T) {
 	chart.MarkNotCreated()
 	assert.False(t, chart.created)
 }
+
 func TestChart_MarkRemove(t *testing.T) {
 	chart := createTestChart("1")
 
 	chart.MarkRemove()
 	assert.True(t, chart.remove)
+	assert.True(t, chart.Obsolete)
+}
+
+func TestChart_MarkDimRemove(t *testing.T) {
+	chart := createTestChart("1")
+
+	assert.Error(t, chart.MarkDimRemove("dim99", false))
+	assert.NoError(t, chart.MarkDimRemove("dim1", true))
+	assert.True(t, chart.GetDim("dim1").Obsolete)
+	assert.True(t, chart.GetDim("dim1").Hidden)
+	assert.True(t, chart.GetDim("dim1").remove)
 }
 
 func TestChart_check(t *testing.T) {
