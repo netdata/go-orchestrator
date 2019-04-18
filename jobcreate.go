@@ -11,16 +11,24 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const (
+	defaultUpdateEvery        = 1
+	defaultAutoDetectionRetry = 0
+	DefaultJobPriority        = 70000
+)
+
 func newModuleConfig() *moduleConfig {
 	return &moduleConfig{
-		UpdateEvery:        1,
-		AutoDetectionRetry: 0,
+		UpdateEvery:        defaultUpdateEvery,
+		AutoDetectionRetry: defaultAutoDetectionRetry,
+		Priority:           DefaultJobPriority,
 	}
 }
 
 type moduleConfig struct {
 	UpdateEvery        int                      `yaml:"update_every"`
 	AutoDetectionRetry int                      `yaml:"autodetection_retry"`
+	Priority           int                      `yaml:"priority"`
 	Jobs               []map[string]interface{} `yaml:"jobs"`
 
 	name string
@@ -38,6 +46,10 @@ func (m *moduleConfig) updateJobs(moduleUpdateEvery, pluginUpdateEvery int) {
 
 		if _, ok := job["autodetection_retry"]; !ok {
 			job["autodetection_retry"] = m.AutoDetectionRetry
+		}
+
+		if _, ok := job["priority"]; !ok {
+			job["priority"] = m.Priority
 		}
 
 		if v, ok := job["update_every"].(int); ok && v < pluginUpdateEvery {

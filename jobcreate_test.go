@@ -120,66 +120,84 @@ func TestPluginConfig_isModuleEnabled(t *testing.T) {
 }
 
 func TestModuleConfig_updateJobs(t *testing.T) {
-	conf := moduleConfig{
-		UpdateEvery:        10,
-		AutoDetectionRetry: 10,
-		Jobs: []map[string]interface{}{
-			{"name": "job1"},
-			{"name": "job2", "update_every": 1},
-		},
+	conf := newModuleConfig()
+	conf.Jobs = []map[string]interface{}{
+		{"name": "job1"},
+		{"name": "job2", "update_every": 10},
 	}
-
 	conf.updateJobs(0, 0)
 
 	assert.Equal(
 		t,
 		[]map[string]interface{}{
-			{"name": "job1", "update_every": 10, "autodetection_retry": 10},
-			{"name": "job2", "update_every": 1, "autodetection_retry": 10},
+			{
+				"name":                "job1",
+				"update_every":        defaultUpdateEvery,
+				"autodetection_retry": defaultAutoDetectionRetry,
+				"priority":            DefaultJobPriority,
+			},
+			{
+				"name":                "job2",
+				"update_every":        10,
+				"autodetection_retry": defaultAutoDetectionRetry,
+				"priority":            DefaultJobPriority,
+			},
 		},
 		conf.Jobs,
 	)
 }
 
 func TestModuleConfig_UpdateJobsRewriteModuleUpdateEvery(t *testing.T) {
-	conf := moduleConfig{
-		UpdateEvery:        10,
-		AutoDetectionRetry: 10,
-		Jobs: []map[string]interface{}{
-			{"name": "job1"},
-			{"name": "job2", "update_every": 1},
-		},
+	conf := newModuleConfig()
+	conf.Jobs = []map[string]interface{}{
+		{"name": "job1"},
+		{"name": "job2", "update_every": 10},
 	}
-
 	conf.updateJobs(20, 0)
 
 	assert.Equal(
 		t,
 		[]map[string]interface{}{
-			{"name": "job1", "update_every": 20, "autodetection_retry": 10},
-			{"name": "job2", "update_every": 1, "autodetection_retry": 10},
+			{
+				"name":                "job1",
+				"update_every":        20,
+				"autodetection_retry": defaultAutoDetectionRetry,
+				"priority":            DefaultJobPriority,
+			},
+			{
+				"name":                "job2",
+				"update_every":        10,
+				"autodetection_retry": defaultAutoDetectionRetry,
+				"priority":            DefaultJobPriority,
+			},
 		},
 		conf.Jobs,
 	)
 }
 
 func TestModuleConfig_UpdateJobsRewritePluginUpdateEvery(t *testing.T) {
-	conf := moduleConfig{
-		UpdateEvery:        10,
-		AutoDetectionRetry: 10,
-		Jobs: []map[string]interface{}{
-			{"name": "job1"},
-			{"name": "job2", "update_every": 1},
-		},
+	conf := newModuleConfig()
+	conf.Jobs = []map[string]interface{}{
+		{"name": "job1"},
+		{"name": "job2", "update_every": 10},
 	}
-
 	conf.updateJobs(0, 5)
 
 	assert.Equal(
 		t,
 		[]map[string]interface{}{
-			{"name": "job1", "update_every": 10, "autodetection_retry": 10},
-			{"name": "job2", "update_every": 5, "autodetection_retry": 10},
+			{
+				"name":                "job1",
+				"update_every":        5,
+				"autodetection_retry": defaultAutoDetectionRetry,
+				"priority":            DefaultJobPriority,
+			},
+			{
+				"name":                "job2",
+				"update_every":        10,
+				"autodetection_retry": defaultAutoDetectionRetry,
+				"priority":            DefaultJobPriority,
+			},
 		},
 		conf.Jobs,
 	)
