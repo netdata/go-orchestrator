@@ -44,7 +44,7 @@ func TestNetdataAPI_dimension(t *testing.T) {
 		Absolute,
 		1,
 		1,
-		false,
+		DimOpts{},
 	)
 
 	assert.Equal(
