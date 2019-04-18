@@ -234,42 +234,38 @@ func (j *Job) processMetrics(metrics map[string]int64, startTime time.Time, sinc
 		j.createChart(j.runtimeChart)
 	}
 
-	var totalUpdated int
-	elapsed := int64(durationTo(time.Now().Sub(startTime), time.Millisecond))
+	var (
+		remove       []string
+		totalUpdated int
+		elapsed      = int64(durationTo(time.Now().Sub(startTime), time.Millisecond))
+	)
 
-	for i, s := 0, len(*j.charts); i < s; i++ {
-		chart := (*j.charts)[i]
-
+	for _, chart := range *j.charts {
 		if !chart.created {
 			j.createChart(chart)
 		}
-
 		if chart.remove {
-			_ = j.charts.Remove(chart.ID)
-			i--
-			s--
+			remove = append(remove, chart.ID)
 			continue
 		}
-
 		if len(metrics) == 0 || chart.Obsolete {
 			continue
 		}
-
 		if j.updateChart(chart, metrics, sinceLastRun) {
 			totalUpdated++
 		}
 
 	}
 
+	for _, id := range remove {
+		_ = j.charts.Remove(id)
+	}
+
 	if totalUpdated == 0 {
 		return false
 	}
 
-	j.updateChart(
-		j.runtimeChart,
-		map[string]int64{"time": elapsed},
-		sinceLastRun,
-	)
+	j.updateChart(j.runtimeChart, map[string]int64{"time": elapsed}, sinceLastRun)
 
 	return true
 }
@@ -301,7 +297,7 @@ func (j *Job) createChart(chart *Chart) {
 			dim.Algo,
 			dim.Mul,
 			dim.Div,
-			dim.Hidden,
+			dim.DimOpts,
 		)
 	}
 	for _, v := range chart.Vars {
@@ -326,18 +322,33 @@ func (j *Job) updateChart(chart *Chart, data map[string]int64, sinceLastRun int)
 		sinceLastRun,
 	)
 
-	var updated int
+	var (
+		remove  []string
+		updated int
+	)
 
 	for _, dim := range chart.Dims {
-		if v, ok := data[dim.ID]; ok {
+		if dim.remove {
+			remove = append(remove, dim.ID)
+			continue
+		}
+		v, ok := data[dim.ID]
+
+		if !ok {
+			_ = j.apiWriter.dimSetEmpty(dim.ID)
+		} else {
 			_ = j.apiWriter.dimSet(dim.ID, v)
 			updated++
-		} else {
-			_ = j.apiWriter.dimSetEmpty(dim.ID)
 		}
 	}
+
+	for _, id := range remove {
+		_ = chart.RemoveDim(id)
+	}
+
 	for _, variable := range chart.Vars {
-		if v, ok := data[variable.ID]; ok {
+		v, ok := data[variable.ID]
+		if ok {
 			_ = j.apiWriter.varSet(variable.ID, v)
 		}
 	}
