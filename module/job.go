@@ -157,7 +157,7 @@ func (j *Job) Tick(clock int) {
 	select {
 	case j.tick <- clock:
 	default:
-		j.Errorf("Skip the tick due to previous run hasn't been finished.")
+		j.Debug("Skip the tick due to previous run hasn't been finished")
 	}
 }
 
