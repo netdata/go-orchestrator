@@ -34,7 +34,7 @@ type moduleConfig struct {
 	name string
 }
 
-func (m *moduleConfig) updateJobs(defaults module.Defaults, minUpdateEvery int) {
+func (m *moduleConfig) setGlobalDefaults(defaults module.Defaults) {
 	if defaults.UpdateEvery > 0 {
 		m.UpdateEvery = defaults.UpdateEvery
 	}
@@ -44,7 +44,9 @@ func (m *moduleConfig) updateJobs(defaults module.Defaults, minUpdateEvery int) 
 	if defaults.Priority > 0 {
 		m.Priority = defaults.Priority
 	}
+}
 
+func (m *moduleConfig) updateJobs(minUpdateEvery int) {
 	for _, job := range m.Jobs {
 		if _, ok := job["update_every"]; !ok {
 			job["update_every"] = m.UpdateEvery
@@ -73,6 +75,9 @@ func (o *Orchestrator) loadModuleConfig(name string) *moduleConfig {
 	}
 
 	modConf := newModuleConfig()
+	if creator, ok := o.Registry[name]; ok {
+		modConf.setGlobalDefaults(creator.Defaults)
+	}
 	modConf.name = name
 
 	configPath, err := o.ConfigPath.Find(fmt.Sprintf("%s/%s.conf", dirName, name))
@@ -105,7 +110,7 @@ func (o *Orchestrator) createModuleJobs(modConf *moduleConfig) []Job {
 	var jobs []Job
 
 	creator := o.Registry[modConf.name]
-	modConf.updateJobs(creator.Defaults, o.Option.UpdateEvery)
+	modConf.updateJobs(o.Option.UpdateEvery)
 
 	jobName := func(conf map[string]interface{}) interface{} {
 		if name, ok := conf["name"]; ok {
@@ -153,7 +158,10 @@ func (o *Orchestrator) createJobs() []Job {
 }
 
 func unmarshal(conf interface{}, module interface{}) error {
-	b, _ := yaml.Marshal(conf)
+	b, err := yaml.Marshal(conf)
+	if err != nil {
+		return err
+	}
 	return yaml.Unmarshal(b, module)
 }
 
