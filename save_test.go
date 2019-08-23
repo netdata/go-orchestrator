@@ -19,8 +19,7 @@ func Test_jobStatusesSaveLoop(t *testing.T) {
 		time.Sleep(time.Second * 3)
 		s.stop()
 	}()
-	go s.mainLoop()
-	<-s.stopCh
+	s.mainLoop()
 
 	assert.NotZero(t, b.Bytes())
 }
