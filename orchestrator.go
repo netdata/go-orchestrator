@@ -114,7 +114,7 @@ func (o *Orchestrator) Serve() {
 
 	if !isAtty && o.varLibDir != "" {
 		w := &fileWriter{path: path.Join(o.varLibDir, jobStatusesFile)}
-		s := newJobsStatusesSaver(w, o.jobsStatuses, time.Second*5)
+		s := newJobsStatusesSaver(w, o.jobsStatuses, time.Second*10)
 		go s.mainLoop()
 		defer s.stop()
 	}
