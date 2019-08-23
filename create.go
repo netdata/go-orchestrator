@@ -169,7 +169,7 @@ func (o *Orchestrator) createJobs() []Job {
 	return jobs
 }
 
-func (o Orchestrator) loadJobsStatuses() (*jobsStatuses, error) {
+func (o *Orchestrator) loadJobsStatuses() (*jobsStatuses, error) {
 	if o.varLibDir == "" {
 		return nil, nil
 	}
