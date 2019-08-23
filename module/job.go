@@ -105,13 +105,32 @@ func (j *Job) AutoDetection() (ok bool) {
 			ok = false
 			j.Errorf("PANIC %v", r)
 			j.panicked = true
+			j.disableAutodetection()
 		}
 		if !ok {
 			j.module.Cleanup()
 		}
 	}()
-	ok = j.init() && j.check() && j.postCheck()
-	return
+
+	if ok = j.init(); !ok {
+		j.Error("Init failed")
+		j.disableAutodetection()
+		return
+	}
+	if ok = j.check(); !ok {
+		j.Error("Check failed")
+		return
+	}
+	if ok = j.postCheck(); !ok {
+		j.Error("PostCheck failed")
+		j.disableAutodetection()
+		return
+	}
+	return true
+}
+
+func (j *Job) disableAutodetection() {
+	j.AutoDetectEvery = 0
 }
 
 // Init calls module Init and returns its value.

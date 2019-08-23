@@ -74,9 +74,16 @@ func TestJob_AutoDetectionEvery(t *testing.T) {
 func TestJob_RetryAutoDetection(t *testing.T) {
 	job := newTestJob()
 	m := &MockModule{
+		InitFunc: func() bool {
+			return true
+		},
 		CheckFunc: func() bool { return false },
+		ChartsFunc: func() *Charts {
+			return &Charts{}
+		},
 	}
 	job.module = m
+	job.AutoDetectEvery = 1
 
 	assert.True(t, job.RetryAutoDetection())
 	assert.Equal(t, infTries, job.AutoDetectTries)
