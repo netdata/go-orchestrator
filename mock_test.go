@@ -8,7 +8,6 @@ import (
 
 func TestMockJob_FullName(t *testing.T) {
 	m := &mockJob{}
-
 	expected := "name"
 
 	assert.NotEqual(t, expected, m.FullName())
@@ -18,7 +17,6 @@ func TestMockJob_FullName(t *testing.T) {
 
 func TestMockJob_ModuleName(t *testing.T) {
 	m := &mockJob{}
-
 	expected := "name"
 
 	assert.NotEqual(t, expected, m.ModuleName())
@@ -28,7 +26,6 @@ func TestMockJob_ModuleName(t *testing.T) {
 
 func TestMockJob_Name(t *testing.T) {
 	m := &mockJob{}
-
 	expected := "name"
 
 	assert.NotEqual(t, expected, m.Name())
@@ -36,14 +33,31 @@ func TestMockJob_Name(t *testing.T) {
 	assert.Equal(t, expected, m.Name())
 }
 
-func TestMockJob_AutoDetectionRetry(t *testing.T) {
+func TestMockJob_AutoDetectionEvery(t *testing.T) {
 	m := &mockJob{}
-
 	expected := -1
 
-	assert.NotEqual(t, expected, m.AutoDetectionRetry())
-	m.autoDetectionRetry = func() int { return expected }
-	assert.Equal(t, expected, m.AutoDetectionRetry())
+	assert.NotEqual(t, expected, m.AutoDetectionEvery())
+	m.autodetectionEvery = func() int { return expected }
+	assert.Equal(t, expected, m.AutoDetectionEvery())
+}
+
+func TestMockJob_RetryAutoDetection(t *testing.T) {
+	m := &mockJob{}
+	expected := true
+
+	assert.True(t, m.RetryAutoDetection())
+	m.retryAutodetection = func() bool { return expected }
+	assert.True(t, m.RetryAutoDetection())
+}
+
+func TestMockJob_AutoDetection(t *testing.T) {
+	m := &mockJob{}
+	expected := true
+
+	assert.True(t, m.AutoDetection())
+	m.autodetection = func() bool { return expected }
+	assert.True(t, m.AutoDetection())
 }
 
 func TestMockJob_Panicked(t *testing.T) {
@@ -52,30 +66,6 @@ func TestMockJob_Panicked(t *testing.T) {
 	assert.False(t, m.Panicked())
 	m.panicked = func() bool { return true }
 	assert.True(t, m.Panicked())
-}
-
-func TestMockJob_Init(t *testing.T) {
-	m := &mockJob{}
-
-	assert.True(t, m.Init())
-	m.init = func() bool { return false }
-	assert.False(t, m.Init())
-}
-
-func TestMockJob_Check(t *testing.T) {
-	m := &mockJob{}
-
-	assert.True(t, m.Check())
-	m.check = func() bool { return false }
-	assert.False(t, m.Check())
-}
-
-func TestMockJob_PostCheck(t *testing.T) {
-	m := &mockJob{}
-
-	assert.True(t, m.PostCheck())
-	m.postCheck = func() bool { return false }
-	assert.False(t, m.PostCheck())
 }
 
 func TestMockJob_Tick(t *testing.T) {
