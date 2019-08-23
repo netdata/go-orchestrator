@@ -46,9 +46,9 @@ func (o *Orchestrator) startOnce(job Job, started map[string]bool) {
 	log.Infof("%s[%s]: autodetection success", job.ModuleName(), job.Name())
 
 	started[job.FullName()] = true
+	o.jobsStatuses.put(job, "active")
 	go job.Start()
 	o.loopQueue.add(job)
-	o.jobsStatuses.put(job, "active")
 }
 
 func recheckTask(ch chan Job, job Job) {
