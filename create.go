@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 
 	"github.com/netdata/go-orchestrator/module"
 	"github.com/netdata/go-orchestrator/pkg/multipath"
@@ -106,7 +107,7 @@ func (o *Orchestrator) loadModuleConfig(name string) *moduleConfig {
 	return modConf
 }
 
-func (o *Orchestrator) createModuleJobs(modConf *moduleConfig) []Job {
+func (o *Orchestrator) createModuleJobs(modConf *moduleConfig, js *jobsStatuses) []Job {
 	var jobs []Job
 
 	creator := o.Registry[modConf.name]
@@ -134,6 +135,12 @@ func (o *Orchestrator) createModuleJobs(modConf *moduleConfig) []Job {
 			continue
 		}
 
+		if js != nil && js.contains(Job(job)) && job.AutoDetectEvery == 0 {
+			log.Infof("%s[%s] was active on  previous run, applying recovering settings", job.ModuleName(), job.Name())
+			job.AutoDetectTries = 11
+			job.AutoDetectEvery = 30
+		}
+
 		jobs = append(jobs, job)
 	}
 
@@ -143,18 +150,36 @@ func (o *Orchestrator) createModuleJobs(modConf *moduleConfig) []Job {
 func (o *Orchestrator) createJobs() []Job {
 	var jobs []Job
 
+	js, err := o.loadJobsStatuses()
+	if err != nil {
+		log.Warning(err)
+	}
+
 	for name := range o.modules {
 		conf := o.loadModuleConfig(name)
 		if conf == nil {
 			continue
 		}
 
-		for _, job := range o.createModuleJobs(conf) {
+		for _, job := range o.createModuleJobs(conf, js) {
 			jobs = append(jobs, job)
 		}
 	}
 
 	return jobs
+}
+
+func (o *Orchestrator) loadJobsStatuses() (*jobsStatuses, error) {
+	if o.varLibDir == "" {
+		return nil, nil
+	}
+
+	name := path.Join(o.varLibDir, jobStatusesFile)
+	v, err := loadJobsStatusesFromFile(name)
+	if err != nil {
+		return nil, fmt.Errorf("error on loading '%s' : %v", name, err)
+	}
+	return v, nil
 }
 
 func unmarshal(conf interface{}, module interface{}) error {

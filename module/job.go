@@ -12,29 +12,33 @@ import (
 const (
 	penaltyStep = 5
 	maxPenalty  = 600
+	infTries    = -1
 )
 
 // NewJob returns new job.
 func NewJob(pluginName string, moduleName string, module Module, out io.Writer) *Job {
-	buf := &bytes.Buffer{}
-	return &Job{
-		pluginName: pluginName,
-		moduleName: moduleName,
-		module:     module,
-		out:        out,
-		runtimeChart: &Chart{
-			typeID: "netdata",
-			Units:  "ms",
-			Fam:    pluginName,
-			Ctx:    "netdata.go_plugin_execution_time", Priority: 145000,
-			Dims: Dims{
-				{ID: "time"},
-			},
+	runtimeChart := &Chart{
+		typeID: "netdata",
+		Units:  "ms",
+		Fam:    pluginName,
+		Ctx:    "netdata.go_plugin_execution_time", Priority: 145000,
+		Dims: Dims{
+			{ID: "time"},
 		},
-		stopHook:  make(chan struct{}, 1),
-		tick:      make(chan int),
-		buf:       buf,
-		apiWriter: apiWriter{Writer: buf},
+	}
+	buf := &bytes.Buffer{}
+
+	return &Job{
+		AutoDetectTries: infTries,
+		pluginName:      pluginName,
+		moduleName:      moduleName,
+		module:          module,
+		runtimeChart:    runtimeChart,
+		out:             out,
+		stopHook:        make(chan struct{}, 1),
+		tick:            make(chan int),
+		buf:             buf,
+		apiWriter:       apiWriter{Writer: buf},
 	}
 }
 
@@ -42,7 +46,8 @@ func NewJob(pluginName string, moduleName string, module Module, out io.Writer) 
 type Job struct {
 	Nam             string `yaml:"name"`
 	UpdateEvery     int    `yaml:"update_every"`
-	AutoDetectRetry int    `yaml:"autodetection_retry"`
+	AutoDetectEvery int    `yaml:"autodetection_retry"`
+	AutoDetectTries int    `yaml:"-"`
 	Priority        int    `yaml:"priority"`
 
 	*logger.Logger
@@ -94,19 +99,45 @@ func (j Job) Panicked() bool {
 	return j.panicked
 }
 
-// Init calls module Init and returns its value.
-func (j *Job) Init() bool {
-	if j.initialized {
-		return true
-	}
-
+func (j *Job) AutoDetection() (ok bool) {
 	defer func() {
 		if r := recover(); r != nil {
+			ok = false
 			j.Errorf("PANIC %v", r)
 			j.panicked = true
+			j.disableAutodetection()
+		}
+		if !ok {
 			j.module.Cleanup()
 		}
 	}()
+
+	if ok = j.init(); !ok {
+		j.Error("Init failed")
+		j.disableAutodetection()
+		return
+	}
+	if ok = j.check(); !ok {
+		j.Error("Check failed")
+		return
+	}
+	if ok = j.postCheck(); !ok {
+		j.Error("PostCheck failed")
+		j.disableAutodetection()
+		return
+	}
+	return true
+}
+
+func (j *Job) disableAutodetection() {
+	j.AutoDetectEvery = 0
+}
+
+// Init calls module Init and returns its value.
+func (j *Job) init() bool {
+	if j.initialized {
+		return true
+	}
 
 	limitedLogger := logger.NewLimited(j.pluginName, j.ModuleName(), j.Name())
 	j.Logger = limitedLogger
@@ -116,43 +147,35 @@ func (j *Job) Init() bool {
 	if ok {
 		j.initialized = true
 	}
-
 	return ok
 }
 
-// Check calls module Check and returns its value.
-// It handles panic. In case of panic it calls module Cleanup.
-func (j *Job) Check() (ok bool) {
-	defer func() {
-		if r := recover(); r != nil {
-			ok = false
-			j.Errorf("PANIC %v", r)
-			j.panicked = true
-			j.module.Cleanup()
-		}
-	}()
-	ok = j.module.Check()
+// check calls module check and returns its value.
+func (j *Job) check() bool {
+	ok := j.module.Check()
 	if !ok {
-		j.module.Cleanup()
+		if j.AutoDetectTries != infTries {
+			j.AutoDetectTries--
+		}
 	}
-	return
+	return ok
 }
 
 // PostCheck calls module Charts.
-// If the result is nil it calls module Cleanup.
-func (j *Job) PostCheck() bool {
+func (j *Job) postCheck() bool {
 	j.charts = j.module.Charts()
-
 	if j.charts == nil {
 		j.Error("Charts can't be nil")
-		j.module.Cleanup()
 		return false
 	}
-
+	if err := checkCharts(*j.charts...); err != nil {
+		j.Errorf("error on checking charts : %v", err)
+		return false
+	}
 	return true
 }
 
-// Tick Tick
+// Tick Tick.
 func (j *Job) Tick(clock int) {
 	select {
 	case j.tick <- clock:
@@ -209,9 +232,14 @@ func (j *Job) runOnce() {
 	j.buf.Reset()
 }
 
-// AutoDetectionRetry returns value of AutoDetectRetry.
-func (j Job) AutoDetectionRetry() int {
-	return j.AutoDetectRetry
+// AutoDetectionRetry returns value of AutoDetectEvery.
+func (j Job) AutoDetectionEvery() int {
+	return j.AutoDetectEvery
+}
+
+// ReDoAutoDetection returns whether it is needed to retry autodetection.
+func (j Job) RetryAutoDetection() bool {
+	return j.AutoDetectEvery > 0 && (j.AutoDetectTries == infTries || j.AutoDetectTries > 0)
 }
 
 func (j *Job) collect() (result map[string]int64) {

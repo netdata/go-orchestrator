@@ -1,6 +1,6 @@
 package module
 
-// MockModule MockModule
+// MockModule MockModule.
 type MockModule struct {
 	Base
 
@@ -12,7 +12,7 @@ type MockModule struct {
 	CleanupDone bool
 }
 
-// Init invokes InitFunc
+// Init invokes InitFunc.
 func (m MockModule) Init() bool {
 	if m.InitFunc == nil {
 		return true
@@ -20,7 +20,7 @@ func (m MockModule) Init() bool {
 	return m.InitFunc()
 }
 
-// Check invokes CheckFunc
+// Check invokes CheckFunc.
 func (m MockModule) Check() bool {
 	if m.CheckFunc == nil {
 		return true
@@ -28,7 +28,7 @@ func (m MockModule) Check() bool {
 	return m.CheckFunc()
 }
 
-// Charts invokes ChartsFunc
+// Charts invokes ChartsFunc.
 func (m MockModule) Charts() *Charts {
 	if m.ChartsFunc == nil {
 		return nil
@@ -36,7 +36,7 @@ func (m MockModule) Charts() *Charts {
 	return m.ChartsFunc()
 }
 
-// Collect invokes CollectDunc
+// Collect invokes CollectDunc.
 func (m MockModule) Collect() map[string]int64 {
 	if m.CollectFunc == nil {
 		return nil
@@ -44,7 +44,7 @@ func (m MockModule) Collect() map[string]int64 {
 	return m.CollectFunc()
 }
 
-// Cleanup sets CleanupDone to true
+// Cleanup sets CleanupDone to true.
 func (m *MockModule) Cleanup() {
 	if m.CleanupFunc != nil {
 		m.CleanupFunc()

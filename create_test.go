@@ -1,6 +1,8 @@
 package orchestrator
 
 import (
+	"fmt"
+	"path"
 	"testing"
 
 	"github.com/netdata/go-orchestrator/cli"
@@ -67,7 +69,36 @@ func Test_createModuleJobs(t *testing.T) {
 	conf := newModuleConfig()
 	conf.Jobs = []map[string]interface{}{{}, {}, {}}
 	conf.name = "module1"
-	assert.Len(t, o.createModuleJobs(conf), 3)
+	assert.Len(t, o.createModuleJobs(conf, nil), 3)
+}
+
+func Test_createModuleJobsWithJobsStatuses(t *testing.T) {
+	o := New()
+	o.Name = "test.d"
+	o.ConfigPath = multipath.New("./testdata")
+	o.Option = &cli.Option{}
+	reg := make(module.Registry)
+	reg.Register(
+		"module1",
+		module.Creator{Create: func() module.Module { return &module.MockModule{} }},
+	)
+
+	o.Registry = reg
+	conf := newModuleConfig()
+	conf.Jobs = []map[string]interface{}{{}, {}, {}}
+	conf.name = "module1"
+
+	js, err := loadJobsStatusesFromFile(path.Join("./testdata", "god-jobs-statuses.json"))
+	require.NoError(t, err)
+	fmt.Println(js.items)
+
+	jobs := o.createModuleJobs(conf, js)
+	assert.Len(t, jobs, 3)
+	for _, job := range jobs {
+		j := job.(*module.Job)
+		assert.Equal(t, 11, j.AutoDetectTries)
+		assert.Equal(t, 30, j.AutoDetectEvery)
+	}
 }
 
 func TestPluginConfig_isModuleEnabled(t *testing.T) {

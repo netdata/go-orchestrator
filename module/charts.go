@@ -358,8 +358,7 @@ func (v Var) copy() *Var {
 	return &v
 }
 
-// CheckCharts checks charts.
-func CheckCharts(charts ...*Chart) error {
+func checkCharts(charts ...*Chart) error {
 	for _, chart := range charts {
 		err := checkChart(chart)
 		if err != nil {

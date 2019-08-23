@@ -1,6 +1,7 @@
 package module
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,53 +26,93 @@ func createTestChart(id string) *Chart {
 }
 
 func TestDimAlgo_String(t *testing.T) {
-	assert.Equal(t, "line", Line.String())
-	assert.Equal(t, "area", Area.String())
-	assert.Equal(t, "stacked", Stacked.String())
-	assert.Equal(t, "", dimAlgo("wrong").String())
+	cases := []struct {
+		expected string
+		actual   fmt.Stringer
+	}{
+		{"line", Line},
+		{"area", Area},
+		{"stacked", Stacked},
+		{"", dimAlgo("wrong")},
+	}
+
+	for _, v := range cases {
+		assert.Equal(t, v.expected, v.actual.String())
+	}
 }
 
 func TestChartType_String(t *testing.T) {
-	assert.Equal(t, "absolute", Absolute.String())
-	assert.Equal(t, "incremental", Incremental.String())
-	assert.Equal(t, "percentage-of-absolute-row", PercentOfAbsolute.String())
-	assert.Equal(t, "percentage-of-incremental-row", PercentOfIncremental.String())
-	assert.Equal(t, "", chartType("wrong").String())
+	cases := []struct {
+		expected string
+		actual   fmt.Stringer
+	}{
+		{"absolute", Absolute},
+		{"incremental", Incremental},
+		{"percentage-of-absolute-row", PercentOfAbsolute},
+		{"percentage-of-incremental-row", PercentOfIncremental},
+		{"", chartType("wrong")},
+	}
+
+	for _, v := range cases {
+		assert.Equal(t, v.expected, v.actual.String())
+	}
 }
 
 func TestDimDivMul_String(t *testing.T) {
-	assert.Equal(t, "", dimDivMul(0).String())
-	assert.Equal(t, "1", dimDivMul(1).String())
-	assert.Equal(t, "-1", dimDivMul(-1).String())
+	cases := []struct {
+		expected string
+		actual   fmt.Stringer
+	}{
+		{"", dimDivMul(0)},
+		{"1", dimDivMul(1)},
+		{"-1", dimDivMul(-1)},
+	}
+
+	for _, v := range cases {
+		assert.Equal(t, v.expected, v.actual.String())
+	}
 }
 
 func TestOpts_String(t *testing.T) {
-	assert.Equal(t, "", Opts{}.String())
-	assert.Equal(
-		t,
-		"detail hidden obsolete store_first",
-		Opts{Detail: true, Hidden: true, Obsolete: true, StoreFirst: true}.String())
+	cases := []struct {
+		expected string
+		actual   fmt.Stringer
+	}{
+		{"", Opts{}},
+		{
+			"detail hidden obsolete store_first",
+			Opts{Detail: true, Hidden: true, Obsolete: true, StoreFirst: true},
+		},
+		{
+			"detail hidden obsolete store_first",
+			Opts{Detail: true, Hidden: true, Obsolete: true, StoreFirst: true},
+		},
+	}
 
-	assert.Equal(
-		t,
-		"hidden obsolete",
-		Opts{Obsolete: true, Detail: false, StoreFirst: false, Hidden: true}.String(),
-	)
+	for _, v := range cases {
+		assert.Equal(t, v.expected, v.actual.String())
+	}
 }
 
 func TestDimOpts_String(t *testing.T) {
-	assert.Equal(t, "", DimOpts{}.String())
-	assert.Equal(
-		t,
-		"hidden nooverflow noreset obsolete",
-		DimOpts{Hidden: true, NoOverflow: true, NoReset: true, Obsolete: true}.String())
+	cases := []struct {
+		expected string
+		actual   fmt.Stringer
+	}{
+		{"", DimOpts{}},
+		{
+			"hidden nooverflow noreset obsolete",
+			DimOpts{Hidden: true, NoOverflow: true, NoReset: true, Obsolete: true},
+		},
+		{
+			"hidden obsolete",
+			DimOpts{Hidden: true, NoOverflow: false, NoReset: false, Obsolete: true},
+		},
+	}
 
-	assert.Equal(
-		t,
-		"hidden obsolete",
-		DimOpts{Hidden: true, NoOverflow: false, NoReset: false, Obsolete: true}.String(),
-	)
-
+	for _, v := range cases {
+		assert.Equal(t, v.expected, v.actual.String())
+	}
 }
 
 func TestCharts_Copy(t *testing.T) {
@@ -81,7 +122,7 @@ func TestCharts_Copy(t *testing.T) {
 	}
 	copied := orig.Copy()
 
-	require.False(t, orig == copied, "copied Charts points to the same address")
+	require.False(t, orig == copied, "Charts copy points to the same address")
 	require.Len(t, *orig, len(*copied))
 
 	for idx := range *orig {
@@ -316,18 +357,18 @@ func compareCharts(t *testing.T, orig, copied *Chart) {
 	// 2. compare Dims, Vars length
 	// 3. compare Dims, Vars pointers
 
-	assert.False(t, orig == copied, "copied ChartsFunc points to the same address")
+	assert.False(t, orig == copied, "Chart copy ChartsFunc points to the same address")
 
 	require.Len(t, orig.Dims, len(copied.Dims))
 	require.Len(t, orig.Vars, len(copied.Vars))
 
 	for idx := range (*orig).Dims {
-		assert.False(t, orig.Dims[idx] == copied.Dims[idx], "copied dim points to the same address")
-		assert.Equal(t, orig.Dims[idx], copied.Dims[idx], "copied dim isn't equal to orig")
+		assert.False(t, orig.Dims[idx] == copied.Dims[idx], "Chart copy dim points to the same address")
+		assert.Equal(t, orig.Dims[idx], copied.Dims[idx], "Chart copy dim isn't equal to orig")
 	}
 
 	for idx := range (*orig).Vars {
-		assert.False(t, orig.Vars[idx] == copied.Vars[idx], "copied var points to the same address")
-		assert.Equal(t, orig.Vars[idx], copied.Vars[idx], "copied var isn't equal to orig")
+		assert.False(t, orig.Vars[idx] == copied.Vars[idx], "Chart copy var points to the same address")
+		assert.Equal(t, orig.Vars[idx], copied.Vars[idx], "Chart copy var isn't equal to orig")
 	}
 }
