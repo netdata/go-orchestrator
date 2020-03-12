@@ -47,12 +47,7 @@ type Config struct {
 
 func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type config Config
-	cc := config{
-		Enabled:    c.Enabled,
-		DefaultRun: c.DefaultRun,
-		MaxProcs:   c.MaxProcs,
-		Modules:    c.Modules,
-	}
+	cc := config(*c)
 	if err := unmarshal(&cc); err != nil {
 		return err
 	}
@@ -60,6 +55,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	c.DefaultRun = cc.DefaultRun
 	c.MaxProcs = cc.MaxProcs
 	c.Modules = cc.Modules
+	*c = Config(cc)
 
 	var m map[string]interface{}
 	if err := unmarshal(&m); err != nil {
