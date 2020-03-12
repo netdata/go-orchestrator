@@ -16,6 +16,7 @@ import (
 	"github.com/netdata/go-orchestrator/pkg/multipath"
 
 	"github.com/mattn/go-isatty"
+	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -42,6 +43,37 @@ type Config struct {
 	DefaultRun bool            `yaml:"default_run"`
 	MaxProcs   int             `yaml:"max_procs"`
 	Modules    map[string]bool `yaml:"modules"`
+}
+
+func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type config Config
+	cc := config(*c)
+	if err := unmarshal(&cc); err != nil {
+		return err
+	}
+	*c = Config(cc)
+
+	var m map[string]interface{}
+	if err := unmarshal(&m); err != nil {
+		return err
+	}
+
+	for key, value := range m {
+		switch key {
+		case "enabled", "default_run", "max_procs", "modules":
+			continue
+		}
+		var b bool
+		if in, err := yaml.Marshal(value); err != nil || yaml.Unmarshal(in, &b) != nil {
+			continue
+		}
+		if c.Modules == nil {
+			c.Modules = make(map[string]bool)
+		}
+		c.Modules[key] = b
+	}
+
+	return nil
 }
 
 func (c Config) isModuleEnabled(module string, explicit bool) bool {

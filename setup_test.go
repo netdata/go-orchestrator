@@ -73,6 +73,17 @@ func TestOrchestrator_SetupEmptyConfig(t *testing.T) {
 
 	assert.True(t, o.Setup())
 }
+func TestOrchestrator_SetupInvalidModulesSectionConfig(t *testing.T) {
+	o := New()
+	o.Name = "test"
+	o.Option = &cli.Option{Module: "all"}
+	o.ConfigPath = multipath.New("./testdata")
+	o.Registry = module.Registry{"module1": module.Creator{}, "module2": module.Creator{}}
+	o.configName = "test.d.conf-invalid-modules.yml"
+
+	assert.True(t, o.Setup())
+	assert.Len(t, o.Config.Modules, 2)
+}
 
 func TestOrchestrator_SetupDisabledInConfig(t *testing.T) {
 	o := New()
