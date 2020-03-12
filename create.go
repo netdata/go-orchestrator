@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"regexp"
 
 	"github.com/netdata/go-orchestrator/module"
 	"github.com/netdata/go-orchestrator/pkg/multipath"
@@ -107,6 +108,12 @@ func (o *Orchestrator) loadModuleConfig(name string) *moduleConfig {
 	return modConf
 }
 
+var space = regexp.MustCompile(`\s+`)
+
+func cleanJobName(name string) string {
+	return space.ReplaceAllString(name, "_")
+}
+
 func (o *Orchestrator) createModuleJobs(modConf *moduleConfig, js *jobsStatuses) []Job {
 	var jobs []Job
 
@@ -134,6 +141,8 @@ func (o *Orchestrator) createModuleJobs(modConf *moduleConfig, js *jobsStatuses)
 			log.Errorf("skipping %s[%s]: %s", modConf.name, jobName(conf), err)
 			continue
 		}
+
+		job.Nam = cleanJobName(job.Nam)
 
 		if js != nil && js.contains(Job(job)) && job.AutoDetectEvery == 0 {
 			log.Infof("%s[%s] was active on  previous run, applying recovering settings", job.ModuleName(), job.Name())
