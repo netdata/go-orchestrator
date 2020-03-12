@@ -51,10 +51,6 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err := unmarshal(&cc); err != nil {
 		return err
 	}
-	c.Enabled = cc.Enabled
-	c.DefaultRun = cc.DefaultRun
-	c.MaxProcs = cc.MaxProcs
-	c.Modules = cc.Modules
 	*c = Config(cc)
 
 	var m map[string]interface{}
