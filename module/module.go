@@ -1,10 +1,10 @@
 package module
 
 import (
-	"github.com/netdata/go-orchestrator/logger"
+	"github.com/netdata/go-orchestrator/pkg/logger"
 )
 
-// Module is an interface that represents a module.
+// UseModule is an interface that represents a module.
 type Module interface {
 	// Init does initialization.
 	// If it return false, the job will be disabled.

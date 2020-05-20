@@ -2,6 +2,12 @@ package module
 
 import "fmt"
 
+const (
+	UpdateEvery        = 1
+	AutoDetectionRetry = 0
+	Priority           = 70000
+)
+
 // Defaults is a set of module default parameters.
 type Defaults struct {
 	UpdateEvery        int

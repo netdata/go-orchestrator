@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/netdata/go-orchestrator/logger"
+	"github.com/netdata/go-orchestrator/pkg/logger"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -34,9 +34,9 @@ func TestJob_FullName(t *testing.T) {
 	job := newTestJob()
 
 	assert.Equal(t, job.FullName(), testModName)
-	job.Nam = testModName
+	job.name = testModName
 	assert.Equal(t, job.FullName(), testModName)
-	job.Nam = testJobName
+	job.name = testJobName
 	assert.Equal(t, job.FullName(), fmt.Sprintf("%s_%s", testModName, testJobName))
 
 }
@@ -51,7 +51,7 @@ func TestJob_Name(t *testing.T) {
 	job := newTestJob()
 
 	assert.Equal(t, job.Name(), testModName)
-	job.Nam = testJobName
+	job.name = testJobName
 	assert.Equal(t, job.Name(), testJobName)
 }
 
@@ -66,9 +66,9 @@ func TestJob_Panicked(t *testing.T) {
 func TestJob_AutoDetectionEvery(t *testing.T) {
 	job := newTestJob()
 
-	assert.Equal(t, job.AutoDetectionEvery(), job.AutoDetectEvery)
-	job.AutoDetectEvery = 1
-	assert.Equal(t, job.AutoDetectionEvery(), job.AutoDetectEvery)
+	assert.Equal(t, job.AutoDetectionEvery(), job.autoDetectEvery)
+	job.autoDetectEvery = 1
+	assert.Equal(t, job.AutoDetectionEvery(), job.autoDetectEvery)
 }
 
 func TestJob_RetryAutoDetection(t *testing.T) {
@@ -83,7 +83,7 @@ func TestJob_RetryAutoDetection(t *testing.T) {
 		},
 	}
 	job.module = m
-	job.AutoDetectEvery = 1
+	job.autoDetectEvery = 1
 
 	assert.True(t, job.RetryAutoDetection())
 	assert.Equal(t, infTries, job.AutoDetectTries)
@@ -245,7 +245,7 @@ func TestJob_MainLoop(t *testing.T) {
 	job := newTestJob()
 	job.module = m
 	job.charts = job.module.Charts()
-	job.UpdateEvery = 1
+	job.updateEvery = 1
 
 	go func() {
 		for i := 1; i < 3; i++ {
@@ -268,7 +268,7 @@ func TestJob_MainLoop_Panic(t *testing.T) {
 	}
 	job := newTestJob()
 	job.module = m
-	job.UpdateEvery = 1
+	job.updateEvery = 1
 
 	go func() {
 		for i := 1; i < 3; i++ {

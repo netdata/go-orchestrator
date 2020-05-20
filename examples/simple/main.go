@@ -3,13 +3,14 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 
-	"github.com/netdata/go-orchestrator"
 	"github.com/netdata/go-orchestrator/cli"
-	"github.com/netdata/go-orchestrator/logger"
 	"github.com/netdata/go-orchestrator/module"
+	"github.com/netdata/go-orchestrator/pkg/logger"
+	"github.com/netdata/go-orchestrator/plugin"
 )
 
 var version = "v0.0.1-example"
@@ -55,21 +56,24 @@ func main() {
 
 	module.Register("example", module.Creator{Create: func() module.Module { return &example{} }})
 
-	p := newPlugin(opt)
+	p, err := plugin.New(plugin.Config{
+		Name:           "test.d",
+		MinUpdateEvery: 1,
+		UseModule:      "",
+		//ConfDir: []string{
+		//	"/Users/ilyam/Projects/golang/go-orchestrator/examples/simple/",
+		//},
+		SDConfPath: []string{
+			"/opt/sd.yml",
+			//"/Users/ilyam/Projects/golang/go-orchestrator/examples/simple/sd.yml",
+		},
+	})
 
-	if !p.Setup() {
-		return
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	p.Serve()
-}
-
-func newPlugin(opt *cli.Option) *orchestrator.Orchestrator {
-	p := orchestrator.New()
-	p.Name = "test.d"
-	p.Option = opt
-
-	return p
+	p.Run()
 }
 
 func parseCLI() *cli.Option {

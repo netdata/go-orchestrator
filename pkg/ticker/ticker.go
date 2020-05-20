@@ -1,4 +1,4 @@
-package orchestrator
+package ticker
 
 import "time"
 
@@ -13,10 +13,10 @@ type (
 	}
 )
 
-// NewTicker returns a new Ticker containing a channel that will send the time with a period specified by the duration argument.
+// New returns a new Ticker containing a channel that will send the time with a period specified by the duration argument.
 // It adjusts the intervals or drops ticks to make up for slow receivers.
-// The duration must be greater than zero; if not, NewTicker will panic. Stop the Ticker to release associated resources.
-func NewTicker(interval time.Duration) *Ticker {
+// The duration must be greater than zero; if not, New will panic. Stop the Ticker to release associated resources.
+func New(interval time.Duration) *Ticker {
 	ticker := &Ticker{
 		interval: interval,
 		done:     make(chan struct{}, 1),

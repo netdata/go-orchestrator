@@ -2,22 +2,14 @@ package module
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"time"
 
-	"github.com/netdata/go-orchestrator/logger"
+	"github.com/netdata/go-orchestrator/pkg/logger"
 )
 
-const (
-	penaltyStep = 5
-	maxPenalty  = 600
-	infTries    = -1
-)
-
-// NewJob returns new job.
-func NewJob(pluginName string, moduleName string, module Module, out io.Writer) *Job {
-	runtimeChart := &Chart{
+func newRuntimeChart(pluginName string) *Chart {
+	return &Chart{
 		typeID: "netdata",
 		Units:  "ms",
 		Fam:    pluginName,
@@ -26,40 +18,66 @@ func NewJob(pluginName string, moduleName string, module Module, out io.Writer) 
 			{ID: "time"},
 		},
 	}
-	buf := &bytes.Buffer{}
+}
 
+type JobConfig struct {
+	PluginName      string
+	Name            string
+	ModuleName      string
+	FullName        string
+	Module          Module
+	Out             io.Writer
+	UpdateEvery     int
+	AutoDetectEvery int
+	Priority        int
+}
+
+const (
+	penaltyStep = 5
+	maxPenalty  = 600
+	infTries    = -1
+)
+
+func NewJob(cfg JobConfig) *Job {
+	var buf bytes.Buffer
 	return &Job{
+		pluginName:      cfg.PluginName,
+		name:            cfg.Name,
+		moduleName:      cfg.ModuleName,
+		fullName:        cfg.FullName,
+		updateEvery:     cfg.UpdateEvery,
+		AutoDetectEvery: cfg.AutoDetectEvery,
+		priority:        cfg.Priority,
+		module:          cfg.Module,
+		out:             cfg.Out,
 		AutoDetectTries: infTries,
-		pluginName:      pluginName,
-		moduleName:      moduleName,
-		module:          module,
-		runtimeChart:    runtimeChart,
-		out:             out,
-		stopHook:        make(chan struct{}, 1),
+		runtimeChart:    newRuntimeChart(cfg.PluginName),
+		stop:            make(chan struct{}, 1),
 		tick:            make(chan int),
-		buf:             buf,
-		apiWriter:       apiWriter{Writer: buf},
+		buf:             &buf,
+		apiWriter:       apiWriter{Writer: &buf},
 	}
 }
 
 // Job represents a job. It's a module wrapper.
 type Job struct {
-	Nam             string `yaml:"name"`
-	UpdateEvery     int    `yaml:"update_every"`
-	AutoDetectEvery int    `yaml:"autodetection_retry"`
-	AutoDetectTries int    `yaml:"-"`
-	Priority        int    `yaml:"priority"`
+	pluginName string
+	name       string
+	moduleName string
+	fullName   string
+
+	updateEvery     int
+	AutoDetectEvery int
+	AutoDetectTries int
+	priority        int
 
 	*logger.Logger
 
-	pluginName string
-	moduleName string
-	module     Module
+	module Module
 
 	initialized bool
 	panicked    bool
 
-	stopHook     chan struct{}
 	runtimeChart *Chart
 	charts       *Charts
 	tick         chan int
@@ -69,15 +87,13 @@ type Job struct {
 
 	retries int
 	prevRun time.Time
+
+	stop chan struct{}
 }
 
 // FullName returns full name.
-// If name isn't specified or equal to module name it returns module name.
 func (j Job) FullName() string {
-	if j.Nam == "" || j.Nam == j.moduleName {
-		return j.ModuleName()
-	}
-	return fmt.Sprintf("%s_%s", j.ModuleName(), j.Name())
+	return j.fullName
 }
 
 // ModuleName returns module name.
@@ -86,12 +102,8 @@ func (j Job) ModuleName() string {
 }
 
 // Name returns name.
-// If name isn't specified it returns module name.
 func (j Job) Name() string {
-	if j.Nam == "" {
-		return j.moduleName
-	}
-	return j.Nam
+	return j.name
 }
 
 // Panicked returns 'panicked' flag value.
@@ -105,7 +117,7 @@ func (j *Job) AutoDetection() (ok bool) {
 			ok = false
 			j.Errorf("PANIC %v", r)
 			j.panicked = true
-			j.disableAutodetection()
+			j.disableAutoDetection()
 		}
 		if !ok {
 			j.module.Cleanup()
@@ -114,7 +126,7 @@ func (j *Job) AutoDetection() (ok bool) {
 
 	if ok = j.init(); !ok {
 		j.Error("Init failed")
-		j.disableAutodetection()
+		j.disableAutoDetection()
 		return
 	}
 	if ok = j.check(); !ok {
@@ -123,14 +135,18 @@ func (j *Job) AutoDetection() (ok bool) {
 	}
 	if ok = j.postCheck(); !ok {
 		j.Error("PostCheck failed")
-		j.disableAutodetection()
+		j.disableAutoDetection()
 		return
 	}
 	return true
 }
 
-func (j *Job) disableAutodetection() {
+func (j *Job) disableAutoDetection() {
 	j.AutoDetectEvery = 0
+}
+
+func (j *Job) Cleanup() {
+	logger.GlobalMsgCountWatcher.Unregister(j.Logger)
 }
 
 // Init calls module Init and returns its value.
@@ -143,11 +159,8 @@ func (j *Job) init() bool {
 	j.Logger = limitedLogger
 	j.module.SetLogger(limitedLogger)
 
-	ok := j.module.Init()
-	if ok {
-		j.initialized = true
-	}
-	return ok
+	j.initialized = j.module.Init()
+	return j.initialized
 }
 
 // check calls module check and returns its value.
@@ -169,7 +182,7 @@ func (j *Job) postCheck() bool {
 		return false
 	}
 	if err := checkCharts(*j.charts...); err != nil {
-		j.Errorf("error on checking charts : %v", err)
+		j.Errorf("error on checking charts: %v", err)
 		return false
 	}
 	return true
@@ -186,29 +199,30 @@ func (j *Job) Tick(clock int) {
 
 // Start simply invokes MainLoop.
 func (j *Job) Start() {
-	j.MainLoop()
-}
-
-// Stop stops MainLoop
-func (j *Job) Stop() {
-	j.stopHook <- struct{}{}
-}
-
-// MainLoop is a job main function.
-func (j *Job) MainLoop() {
 LOOP:
 	for {
 		select {
-		case <-j.stopHook:
-			j.module.Cleanup()
+		case <-j.stop:
 			break LOOP
 		case t := <-j.tick:
-			doRun := t%(j.UpdateEvery+j.penalty()) == 0
-			if doRun {
+			if t%(j.updateEvery+j.penalty()) == 0 {
 				j.runOnce()
 			}
 		}
 	}
+	j.module.Cleanup()
+	j.Cleanup()
+	for _, chart := range *j.module.Charts() {
+		chart.MarkRemove()
+		j.buf.Reset()
+		j.createChart(chart)
+		_, _ = io.Copy(j.out, j.buf)
+	}
+}
+
+// Stop stops MainLoop
+func (j *Job) Stop() {
+	j.stop <- struct{}{}
 }
 
 func (j *Job) runOnce() {
@@ -232,7 +246,7 @@ func (j *Job) runOnce() {
 	j.buf.Reset()
 }
 
-// AutoDetectionRetry returns value of AutoDetectEvery.
+// AutoDetectionRetry returns value of autoDetectEvery.
 func (j Job) AutoDetectionEvery() int {
 	return j.AutoDetectEvery
 }
@@ -254,16 +268,17 @@ func (j *Job) collect() (result map[string]int64) {
 }
 
 func (j *Job) processMetrics(metrics map[string]int64, startTime time.Time, sinceLastRun int) bool {
-	if !j.runtimeChart.created {
-		j.runtimeChart.ID = fmt.Sprintf("execution_time_of_%s", j.FullName())
-		j.runtimeChart.Title = fmt.Sprintf("Execution Time for %s", j.FullName())
-		j.createChart(j.runtimeChart)
-	}
+	//if !j.runtimeChart.created {
+	//	j.runtimeChart.ID = fmt.Sprintf("execution_time_of_%s", j.FullName())
+	//	j.runtimeChart.Title = fmt.Sprintf("Execution Time for %s", j.FullName())
+	//	j.createChart(j.runtimeChart)
+	//}
 
 	var (
 		remove       []string
 		totalUpdated int
 		elapsed      = int64(durationTo(time.Now().Sub(startTime), time.Millisecond))
+		_            = elapsed
 	)
 
 	for _, chart := range *j.charts {
@@ -291,15 +306,15 @@ func (j *Job) processMetrics(metrics map[string]int64, startTime time.Time, sinc
 		return false
 	}
 
-	j.updateChart(j.runtimeChart, map[string]int64{"time": elapsed}, sinceLastRun)
+	//j.updateChart(j.runtimeChart, map[string]int64{"time": elapsed}, sinceLastRun)
 
 	return true
 }
 
 func (j *Job) createChart(chart *Chart) {
 	if chart.Priority == 0 {
-		chart.Priority = j.Priority
-		j.Priority++
+		chart.Priority = j.priority
+		j.priority++
 	}
 	_ = j.apiWriter.chart(
 		firstNotEmpty(chart.typeID, j.FullName()),
@@ -311,7 +326,7 @@ func (j *Job) createChart(chart *Chart) {
 		chart.Ctx,
 		chart.Type,
 		chart.Priority,
-		j.UpdateEvery,
+		j.updateEvery,
 		chart.Opts,
 		j.pluginName,
 		j.moduleName,
@@ -393,7 +408,7 @@ func (j *Job) updateChart(chart *Chart, data map[string]int64, sinceLastRun int)
 }
 
 func (j Job) penalty() int {
-	v := j.retries / penaltyStep * penaltyStep * j.UpdateEvery / 2
+	v := j.retries / penaltyStep * penaltyStep * j.updateEvery / 2
 	if v > maxPenalty {
 		return maxPenalty
 	}
