@@ -10,6 +10,7 @@ import (
 	jobpkg "github.com/netdata/go-orchestrator/job"
 	"github.com/netdata/go-orchestrator/job/confgroup"
 	"github.com/netdata/go-orchestrator/module"
+	"github.com/netdata/go-orchestrator/pkg/logger"
 
 	"gopkg.in/yaml.v2"
 )
@@ -40,10 +41,10 @@ func (d dummyState) Contains(cfg confgroup.Config, states ...string) bool { retu
 type state = string
 
 const (
-	success    state = "success"     // successfully start
-	retry      state = "retry"       // failed, but we need keep trying autodetection
+	success    state = "success"     // successfully started
+	retry      state = "retry"       // failed, but we need keep trying auto-detection
 	failed     state = "failed"      // failed
-	duplicate  state = "duplicate"   // there is already 'success' job with same FullName
+	duplicate  state = "duplicate"   // there is already 'success' job with the same FullName
 	buildError state = "build_error" // error during building
 )
 
@@ -56,6 +57,7 @@ type (
 		PluginName string
 		Out        io.Writer
 		Modules    module.Registry
+		*logger.Logger
 
 		grpCache   *groupCache
 		startCache *startedCache
@@ -204,7 +206,6 @@ func (m *Manager) handleAddCfg(ctx context.Context, cfg confgroup.Config) {
 		go retryTask(ctx, m.retryCh, cfg)
 	case failed:
 		m.Saver.Save(cfg, failed)
-		job.Cleanup()
 	default:
 		// TODO: log, this should happen never
 	}

@@ -4,17 +4,23 @@ import (
 	"io"
 	"os"
 
-	"github.com/netdata/go-orchestrator/job/build"
 	"github.com/netdata/go-orchestrator/job/confgroup"
 	"github.com/netdata/go-orchestrator/job/discovery"
 	"github.com/netdata/go-orchestrator/job/discovery/file"
-	"github.com/netdata/go-orchestrator/job/run"
-	"github.com/netdata/go-orchestrator/job/state"
 	"github.com/netdata/go-orchestrator/module"
 	"github.com/netdata/go-orchestrator/pkg/multipath"
 
 	"gopkg.in/yaml.v2"
 )
+
+func defaultConfig() config {
+	return config{
+		Enabled:    true,
+		DefaultRun: true,
+		MaxProcs:   0,
+		Modules:    nil,
+	}
+}
 
 type config struct {
 	Enabled    bool            `yaml:"enabled"`
@@ -23,44 +29,10 @@ type config struct {
 	Modules    map[string]bool `yaml:"modules"`
 }
 
-func (p *Plugin) setup() (*discovery.Manager, *build.Manager, *state.Manager, *run.Manager, error) {
-	cfg := p.loadPluginConfig()
-	enabled := p.loadEnabledModules(cfg)
-	discCfg := p.buildDiscoveryConf(enabled)
-
-	dm, err := discovery.NewManager(discCfg)
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-
-	rm := run.NewManager()
-	bm := build.NewManager()
-	bm.Runner = rm
-	bm.Modules = enabled
-	bm.Out = p.Out
-	bm.PluginName = p.Name
-
-	var sm *state.Manager
-	if !isTerminal && p.StateFile != "" {
-		sm = state.NewManager(p.StateFile)
-		bm.Saver = sm
-		if st, err := state.Load(p.StateFile); err == nil {
-			bm.PrevState = st
-		}
-	}
-	return dm, bm, sm, rm, nil
-}
-
 func (p *Plugin) loadPluginConfig() config {
-	defaultConf := config{
-		Enabled:    true,
-		DefaultRun: true,
-		MaxProcs:   0,
-		Modules:    nil,
-	}
 	if len(p.ConfPath) == 0 {
 		log.Info("plugin config path not provided, will use defaults")
-		return defaultConf
+		return defaultConfig()
 	}
 
 	name := p.Name + ".conf"
@@ -69,14 +41,16 @@ func (p *Plugin) loadPluginConfig() config {
 	path, err := p.ConfPath.Find(name)
 	if err != nil || path == "" {
 		log.Warning("couldn't find plugin config, will use defaults")
-		return defaultConf
+		return defaultConfig()
 	}
 	log.Infof("found '%s", path)
 
-	if err := loadYAML(defaultConf, path); err != nil {
+	cfg := defaultConfig()
+	if err := loadYAML(&cfg, path); err != nil {
 		log.Warningf("couldn't load '%s': %v, will use defaults", path, err)
+		return defaultConfig()
 	}
-	return defaultConf
+	return cfg
 }
 
 func (p *Plugin) loadEnabledModules(cfg config) module.Registry {
@@ -174,7 +148,7 @@ func (c *config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 	for key, value := range m {
 		switch key {
-		case "enabled", "default_run", "max_procs", "enabledModules":
+		case "enabled", "default_run", "max_procs", "modules":
 			continue
 		}
 		var b bool

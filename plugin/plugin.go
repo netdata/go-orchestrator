@@ -10,7 +10,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/netdata/go-orchestrator/job/build"
 	"github.com/netdata/go-orchestrator/job/confgroup"
+	"github.com/netdata/go-orchestrator/job/discovery"
+	"github.com/netdata/go-orchestrator/job/run"
+	"github.com/netdata/go-orchestrator/job/state"
 	"github.com/netdata/go-orchestrator/module"
 	"github.com/netdata/go-orchestrator/pkg/logger"
 	"github.com/netdata/go-orchestrator/pkg/multipath"
@@ -19,27 +23,9 @@ import (
 	"github.com/mattn/go-isatty"
 )
 
-var varLibDir = os.Getenv("NETDATA_LIB_DIR")
-
-const stateFile = "god-jobs-statuses.json"
-
-var (
-	log = logger.New("plugin", "main", "main")
-)
+var log = logger.New("plugin", "main", "main")
 
 var isTerminal = isatty.IsTerminal(os.Stdout.Fd())
-
-/*
-	PluginConfPath: multipath.New(
-		os.Getenv("NETDATA_USER_CONFIG_DIR"),
-		os.Getenv("NETDATA_STOCK_CONFIG_DIR"),
-	),
-	ModulesConfPath: multipath.New(
-		filepath.Join(os.Getenv("NETDATA_USER_CONFIG_DIR"), "go.d"),
-		filepath.Join(os.Getenv("NETDATA_STOCK_CONFIG_DIR"), "go.d"),
-	),
-	ModulesSDConfFiles: nil,
-*/
 
 // Config is Plugin configuration.
 type Config struct {
@@ -64,6 +50,7 @@ type Plugin struct {
 	MinUpdateEvery     int
 	ModuleRegistry     module.Registry
 	Out                io.Writer
+	*logger.Logger
 }
 
 // New creates Plugin.
@@ -80,47 +67,77 @@ func New(cfg Config) *Plugin {
 	}
 }
 
-type readyOnce struct {
-	c    chan struct{}
-	once sync.Once
-}
-
-func newReadyOnce() *readyOnce {
-	return &readyOnce{c: make(chan struct{})}
-}
-
-func (c *readyOnce) ready()                 { c.once.Do(func() { close(c.c) }) }
-func (c *readyOnce) isReady() chan struct{} { return c.c }
-
 // Run
 func (p *Plugin) Run() {
 	go signalHandling()
 	go keepAlive()
-	run(p)
+	serve(p)
 }
 
-func run(p *Plugin) {
+func serve(p *Plugin) {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGHUP)
-	reload(ch, p)
+	handleReload(ch, p)
 }
 
-func reload(ch chan os.Signal, p *Plugin) {
+func handleReload(ch chan os.Signal, p *Plugin) {
 	ctx, cancel := context.WithCancel(context.Background())
-	once := newReadyOnce()
-	go p.run(ctx, once)
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() { defer wg.Done(); p.run(ctx) }()
 
 	<-ch
 	cancel()
-	<-once.isReady()
-	reload(ch, p)
+	wg.Wait()
+	handleReload(ch, p)
 }
 
-func (p *Plugin) run(ctx context.Context, once *readyOnce) {
-	defer once.ready()
-	discoverer, builder, saver, runner, err := p.setup()
-	if err != nil {
+func (p *Plugin) run(ctx context.Context) {
+	cfg := p.loadPluginConfig()
+	if !cfg.Enabled {
+		log.Info("plugin is disabled in the configuration file, exiting...")
+		if !isTerminal {
+			p.disable()
+		}
+		os.Exit(0)
+	}
+
+	enabled := p.loadEnabledModules(cfg)
+	if len(enabled) == 0 {
+		log.Info("no modules to run")
+		if isTerminal {
+			os.Exit(0)
+		}
 		return
+	}
+
+	discCfg := p.buildDiscoveryConf(enabled)
+
+	discoverer, err := discovery.NewManager(discCfg)
+	if err != nil {
+		if isTerminal {
+			os.Exit(0)
+		}
+		return
+	}
+
+	runner := run.NewManager()
+
+	builder := build.NewManager()
+	builder.Runner = runner
+	builder.Modules = enabled
+	builder.Out = p.Out
+	builder.PluginName = p.Name
+
+	var saver *state.Manager
+	if !isTerminal && p.StateFile != "" {
+		saver = state.NewManager(p.StateFile)
+		builder.Saver = saver
+		st, err := state.Load(p.StateFile)
+		if err != nil {
+			builder.PrevState = st
+		}
 	}
 
 	in := make(chan []*confgroup.Group)
@@ -142,6 +159,7 @@ func (p *Plugin) run(ctx context.Context, once *readyOnce) {
 
 	wg.Wait()
 	<-ctx.Done()
+	runner.Cleanup()
 }
 
 func (p *Plugin) disable() {

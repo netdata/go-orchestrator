@@ -2,6 +2,7 @@ package module
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"time"
 
@@ -91,17 +92,17 @@ type Job struct {
 	stop chan struct{}
 }
 
-// FullName returns full name.
+// FullName returns job full name.
 func (j Job) FullName() string {
 	return j.fullName
 }
 
-// ModuleName returns module name.
+// ModuleName returns job module name.
 func (j Job) ModuleName() string {
 	return j.moduleName
 }
 
-// Name returns name.
+// Name returns job name.
 func (j Job) Name() string {
 	return j.name
 }
@@ -111,6 +112,17 @@ func (j Job) Panicked() bool {
 	return j.panicked
 }
 
+// AutoDetectionEvery returns value of AutoDetectEvery.
+func (j Job) AutoDetectionEvery() int {
+	return j.AutoDetectEvery
+}
+
+// RetryAutoDetection returns whether it is needed to retry autodetection.
+func (j Job) RetryAutoDetection() bool {
+	return j.AutoDetectEvery > 0 && (j.AutoDetectTries == infTries || j.AutoDetectTries > 0)
+}
+
+// AutoDetection invokes init, check and postCheck. It handles panic.
 func (j *Job) AutoDetection() (ok bool) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -125,63 +137,18 @@ func (j *Job) AutoDetection() (ok bool) {
 	}()
 
 	if ok = j.init(); !ok {
-		j.Error("Init failed")
+		j.Error("init failed")
 		j.disableAutoDetection()
 		return
 	}
 	if ok = j.check(); !ok {
-		j.Error("Check failed")
+		j.Error("check failed")
 		return
 	}
 	if ok = j.postCheck(); !ok {
-		j.Error("PostCheck failed")
+		j.Error("postCheck failed")
 		j.disableAutoDetection()
 		return
-	}
-	return true
-}
-
-func (j *Job) disableAutoDetection() {
-	j.AutoDetectEvery = 0
-}
-
-func (j *Job) Cleanup() {
-	logger.GlobalMsgCountWatcher.Unregister(j.Logger)
-}
-
-// Init calls module Init and returns its value.
-func (j *Job) init() bool {
-	if j.initialized {
-		return true
-	}
-
-	limitedLogger := logger.NewLimited(j.pluginName, j.ModuleName(), j.Name())
-	j.Logger = limitedLogger
-	j.module.GetBase().Logger = limitedLogger
-
-	j.initialized = j.module.Init()
-	return j.initialized
-}
-
-// check calls module check and returns its value.
-func (j *Job) check() bool {
-	ok := j.module.Check()
-	if !ok && j.AutoDetectTries != infTries {
-		j.AutoDetectTries--
-	}
-	return ok
-}
-
-// PostCheck calls module Charts.
-func (j *Job) postCheck() bool {
-	j.charts = j.module.Charts()
-	if j.charts == nil {
-		j.Error("Charts can't be nil")
-		return false
-	}
-	if err := checkCharts(*j.charts...); err != nil {
-		j.Errorf("error on checking charts: %v", err)
-		return false
 	}
 	return true
 }
@@ -191,11 +158,11 @@ func (j *Job) Tick(clock int) {
 	select {
 	case j.tick <- clock:
 	default:
-		j.Debug("Skip the tick due to previous run hasn't been finished")
+		j.Debug("skip the tick due to previous run hasn't been finished")
 	}
 }
 
-// Start simply invokes MainLoop.
+// Start starts job main loop.
 func (j *Job) Start() {
 LOOP:
 	for {
@@ -209,18 +176,68 @@ LOOP:
 		}
 	}
 	j.module.Cleanup()
-	j.Cleanup()
-	for _, chart := range *j.module.Charts() {
-		chart.MarkRemove()
-		j.buf.Reset()
-		j.createChart(chart)
-		_, _ = io.Copy(j.out, j.buf)
-	}
+	j.cleanup()
+	j.stop <- struct{}{}
 }
 
-// Stop stops MainLoop
+// Stop stops job main loop.
 func (j *Job) Stop() {
 	j.stop <- struct{}{}
+	<-j.stop
+}
+
+func (j *Job) disableAutoDetection() {
+	j.AutoDetectEvery = 0
+}
+
+func (j *Job) cleanup() {
+	logger.GlobalMsgCountWatcher.Unregister(j.Logger)
+	j.buf.Reset()
+
+	if j.runtimeChart.created {
+		j.runtimeChart.MarkRemove()
+		j.createChart(j.runtimeChart)
+	}
+	for _, chart := range *j.charts {
+		if chart.created {
+			chart.MarkRemove()
+			j.createChart(chart)
+		}
+	}
+	_, _ = io.Copy(j.out, j.buf)
+}
+
+func (j *Job) init() bool {
+	if j.initialized {
+		return true
+	}
+
+	limitedLogger := logger.NewLimited(j.pluginName, j.ModuleName(), j.Name())
+	j.Logger = limitedLogger
+	j.module.GetBase().Logger = limitedLogger
+
+	j.initialized = j.module.Init()
+	return j.initialized
+}
+
+func (j *Job) check() bool {
+	ok := j.module.Check()
+	if !ok && j.AutoDetectTries != infTries {
+		j.AutoDetectTries--
+	}
+	return ok
+}
+
+func (j *Job) postCheck() bool {
+	if j.charts = j.module.Charts(); j.charts == nil {
+		j.Error("nil charts")
+		return false
+	}
+	if err := checkCharts(*j.charts...); err != nil {
+		j.Errorf("charts check: %v", err)
+		return false
+	}
+	return true
 }
 
 func (j *Job) runOnce() {
@@ -244,16 +261,6 @@ func (j *Job) runOnce() {
 	j.buf.Reset()
 }
 
-// AutoDetectionRetry returns value of autoDetectEvery.
-func (j Job) AutoDetectionEvery() int {
-	return j.AutoDetectEvery
-}
-
-// ReDoAutoDetection returns whether it is needed to retry autodetection.
-func (j Job) RetryAutoDetection() bool {
-	return j.AutoDetectEvery > 0 && (j.AutoDetectTries == infTries || j.AutoDetectTries > 0)
-}
-
 func (j *Job) collect() (result map[string]int64) {
 	j.panicked = false
 	defer func() {
@@ -266,17 +273,16 @@ func (j *Job) collect() (result map[string]int64) {
 }
 
 func (j *Job) processMetrics(metrics map[string]int64, startTime time.Time, sinceLastRun int) bool {
-	//if !j.runtimeChart.created {
-	//	j.runtimeChart.ID = fmt.Sprintf("execution_time_of_%s", j.FullName())
-	//	j.runtimeChart.Title = fmt.Sprintf("Execution Time for %s", j.FullName())
-	//	j.createChart(j.runtimeChart)
-	//}
+	if !j.runtimeChart.created {
+		j.runtimeChart.ID = fmt.Sprintf("execution_time_of_%s", j.FullName())
+		j.runtimeChart.Title = fmt.Sprintf("Execution Time for %s", j.FullName())
+		j.createChart(j.runtimeChart)
+	}
 
 	var (
 		remove  []string
 		updated int
 		elapsed = int64(durationTo(time.Now().Sub(startTime), time.Millisecond))
-		_       = elapsed
 	)
 
 	for _, chart := range *j.charts {
@@ -293,7 +299,6 @@ func (j *Job) processMetrics(metrics map[string]int64, startTime time.Time, sinc
 		if j.updateChart(chart, metrics, sinceLastRun) {
 			updated++
 		}
-
 	}
 
 	for _, id := range remove {
@@ -304,7 +309,7 @@ func (j *Job) processMetrics(metrics map[string]int64, startTime time.Time, sinc
 		return false
 	}
 
-	//j.updateChart(j.runtimeChart, map[string]int64{"time": elapsed}, sinceLastRun)
+	j.updateChart(j.runtimeChart, map[string]int64{"time": elapsed}, sinceLastRun)
 
 	return true
 }

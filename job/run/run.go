@@ -26,7 +26,6 @@ func NewManager() *Manager {
 func (m *Manager) Run(ctx context.Context) {
 	tk := ticker.New(time.Second)
 	defer tk.Stop()
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -37,6 +36,7 @@ func (m *Manager) Run(ctx context.Context) {
 	}
 }
 
+// Starts starts a job and adds it to the job queue.
 func (m *Manager) Start(job job.Job) {
 	m.mux.Lock()
 	defer m.mux.Unlock()
@@ -45,6 +45,7 @@ func (m *Manager) Start(job job.Job) {
 	m.queue.add(job)
 }
 
+// Stop stops a job and removes it from the job queue.
 func (m *Manager) Stop(fullName string) {
 	m.mux.Lock()
 	defer m.mux.Unlock()
@@ -52,6 +53,14 @@ func (m *Manager) Stop(fullName string) {
 	if j := m.queue.remove(fullName); j != nil {
 		j.Stop()
 	}
+}
+
+// Cleanup stops all jobs in the queue.
+func (m *Manager) Cleanup() {
+	for _, v := range m.queue {
+		v.Stop()
+	}
+	m.queue = m.queue[:0]
 }
 
 func (m *Manager) notify(clock int) {

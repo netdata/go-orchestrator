@@ -124,7 +124,6 @@ func readSDFormat(reg confgroup.Registry, path string, bs []byte) (*confgroup.Gr
 			cfg.Apply(def)
 			cfgs[i] = cfg
 			i++
-		} else {
 		}
 	}
 

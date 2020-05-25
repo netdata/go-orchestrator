@@ -7,11 +7,12 @@ import (
 )
 
 type (
+	fullName  = string
 	grpSource = string
 	cfgHash   = uint64
 	cfgCount  = uint
 
-	startedCache map[grpSource]struct{}
+	startedCache map[fullName]struct{}
 	retryCache   map[cfgHash]context.CancelFunc
 	groupCache   struct {
 		global map[cfgHash]cfgCount
@@ -72,7 +73,7 @@ func (c *groupCache) putEmpty(group *confgroup.Group) (added, removed []confgrou
 func (c *groupCache) putNotEmpty(group *confgroup.Group) (added, removed []confgroup.Config) {
 	set, ok := c.source[group.Source]
 	if !ok {
-		set = make(map[uint64]confgroup.Config)
+		set = make(map[cfgHash]confgroup.Config)
 		c.source[group.Source] = set
 	}
 
