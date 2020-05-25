@@ -9,10 +9,11 @@ type (
 	// API implements Netdata external plugins API.
 	// https://learn.netdata.cloud/docs/agent/collectors/plugins.d#the-output-of-the-plugin
 	API struct {
-		// Out write to
 		io.Writer
 	}
 )
+
+func New(w io.Writer) *API { return &API{w} }
 
 // CHART  create or update a chart.
 func (a *API) CHART(
@@ -69,7 +70,7 @@ func (a *API) SETEMPTY(ID string) error {
 	return err
 }
 
-// VARIABLE sets the value of a variable for the initialized chart.
+// VARIABLE set the value of a CHART scope variable for the initialized chart.
 func (a *API) VARIABLE(ID string, value int64) error {
 	_, err := fmt.Fprintf(a, "VARIABLE CHART %s = %d\n", ID, value)
 	return err

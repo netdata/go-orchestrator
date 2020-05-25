@@ -4,26 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/netdata/go-orchestrator/job/confgroup"
 )
 
-const stateFile = "god-jobs-statuses.json"
-
-var varLibDir = os.Getenv("NETDATA_LIB_DIR")
-
 type Manager struct {
 	path  string
 	state *State
 }
 
-func NewManager() *Manager {
+func NewManager(path string) *Manager {
 	return &Manager{
 		state: &State{mux: new(sync.Mutex)},
-		path:  filepath.Join(varLibDir, stateFile),
+		path:  path,
 	}
 }
 

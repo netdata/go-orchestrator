@@ -157,7 +157,7 @@ func (j *Job) init() bool {
 
 	limitedLogger := logger.NewLimited(j.pluginName, j.ModuleName(), j.Name())
 	j.Logger = limitedLogger
-	j.module.SetLogger(limitedLogger)
+	j.module.GetBase().Logger = limitedLogger
 
 	j.initialized = j.module.Init()
 	return j.initialized
@@ -166,10 +166,8 @@ func (j *Job) init() bool {
 // check calls module check and returns its value.
 func (j *Job) check() bool {
 	ok := j.module.Check()
-	if !ok {
-		if j.AutoDetectTries != infTries {
-			j.AutoDetectTries--
-		}
+	if !ok && j.AutoDetectTries != infTries {
+		j.AutoDetectTries--
 	}
 	return ok
 }
@@ -275,10 +273,10 @@ func (j *Job) processMetrics(metrics map[string]int64, startTime time.Time, sinc
 	//}
 
 	var (
-		remove       []string
-		totalUpdated int
-		elapsed      = int64(durationTo(time.Now().Sub(startTime), time.Millisecond))
-		_            = elapsed
+		remove  []string
+		updated int
+		elapsed = int64(durationTo(time.Now().Sub(startTime), time.Millisecond))
+		_       = elapsed
 	)
 
 	for _, chart := range *j.charts {
@@ -293,7 +291,7 @@ func (j *Job) processMetrics(metrics map[string]int64, startTime time.Time, sinc
 			continue
 		}
 		if j.updateChart(chart, metrics, sinceLastRun) {
-			totalUpdated++
+			updated++
 		}
 
 	}
@@ -302,7 +300,7 @@ func (j *Job) processMetrics(metrics map[string]int64, startTime time.Time, sinc
 		_ = j.charts.Remove(id)
 	}
 
-	if totalUpdated == 0 {
+	if updated == 0 {
 		return false
 	}
 
@@ -352,7 +350,7 @@ func (j *Job) createChart(chart *Chart) {
 	chart.created = true
 }
 
-func (j *Job) updateChart(chart *Chart, data map[string]int64, sinceLastRun int) bool {
+func (j *Job) updateChart(chart *Chart, collected map[string]int64, sinceLastRun int) bool {
 	if !chart.updated {
 		sinceLastRun = 0
 	}
@@ -373,7 +371,7 @@ func (j *Job) updateChart(chart *Chart, data map[string]int64, sinceLastRun int)
 			remove = append(remove, dim.ID)
 			continue
 		}
-		v, ok := data[dim.ID]
+		v, ok := collected[dim.ID]
 
 		if !ok {
 			_ = j.apiWriter.dimSetEmpty(dim.ID)
@@ -388,7 +386,7 @@ func (j *Job) updateChart(chart *Chart, data map[string]int64, sinceLastRun int)
 	}
 
 	for _, variable := range chart.Vars {
-		v, ok := data[variable.ID]
+		v, ok := collected[variable.ID]
 		if ok {
 			_ = j.apiWriter.varSet(variable.ID, v)
 		}
@@ -396,14 +394,11 @@ func (j *Job) updateChart(chart *Chart, data map[string]int64, sinceLastRun int)
 
 	_ = j.apiWriter.end()
 
-	chart.updated = updated > 0
-
-	if chart.updated {
+	if chart.updated = updated > 0; chart.updated {
 		chart.Retries = 0
 	} else {
 		chart.Retries++
 	}
-
 	return chart.updated
 }
 

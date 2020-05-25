@@ -40,7 +40,7 @@ func NewReader(reg confgroup.Registry, paths []string) *Reader {
 	}
 }
 
-func (r Reader) Discover(ctx context.Context, in chan<- []*confgroup.Group) {
+func (r Reader) Run(ctx context.Context, in chan<- []*confgroup.Group) {
 	select {
 	case <-ctx.Done():
 	case in <- r.groups():

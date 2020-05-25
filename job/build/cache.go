@@ -1,19 +1,21 @@
 package build
 
 import (
+	"context"
+
 	"github.com/netdata/go-orchestrator/job/confgroup"
 )
 
 type (
-	groupSource = string
-	cfgHash     = uint64
-	stopRetry   = func()
+	grpSource = string
+	cfgHash   = uint64
+	cfgCount  = uint
 
-	startedCache map[groupSource]struct{}
-	retryCache   map[cfgHash]stopRetry
+	startedCache map[grpSource]struct{}
+	retryCache   map[cfgHash]context.CancelFunc
 	groupCache   struct {
-		global map[cfgHash]int
-		source map[groupSource]map[cfgHash]confgroup.Config
+		global map[cfgHash]cfgCount
+		source map[grpSource]map[cfgHash]confgroup.Config
 	}
 )
 
@@ -27,8 +29,8 @@ func newRetryCache() *retryCache {
 
 func newGroupCache() *groupCache {
 	return &groupCache{
-		global: make(map[uint64]int),
-		source: make(map[string]map[uint64]confgroup.Config),
+		global: make(map[cfgHash]cfgCount),
+		source: make(map[grpSource]map[cfgHash]confgroup.Config),
 	}
 }
 
@@ -36,7 +38,6 @@ func (c startedCache) put(cfg confgroup.Config)      { c[cfg.FullName()] = struc
 func (c startedCache) remove(cfg confgroup.Config)   { delete(c, cfg.FullName()) }
 func (c startedCache) has(cfg confgroup.Config) bool { _, ok := c[cfg.FullName()]; return ok }
 
-// the caller is responsible to call stop (cancel retry context)
 func (c retryCache) put(cfg confgroup.Config, stop func())      { c[cfg.Hash()] = stop }
 func (c retryCache) remove(cfg confgroup.Config)                { delete(c, cfg.Hash()) }
 func (c retryCache) lookup(cfg confgroup.Config) (func(), bool) { v, ok := c[cfg.Hash()]; return v, ok }

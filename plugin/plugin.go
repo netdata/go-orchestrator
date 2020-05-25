@@ -2,28 +2,26 @@ package plugin
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"github.com/netdata/go-orchestrator/job/build"
-	"github.com/netdata/go-orchestrator/job/run"
 	"io"
 	"os"
 	"os/signal"
-	"runtime"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/netdata/go-orchestrator/job/confgroup"
-	"github.com/netdata/go-orchestrator/job/discovery"
-	"github.com/netdata/go-orchestrator/job/discovery/file"
 	"github.com/netdata/go-orchestrator/module"
 	"github.com/netdata/go-orchestrator/pkg/logger"
 	"github.com/netdata/go-orchestrator/pkg/multipath"
+	"github.com/netdata/go-orchestrator/pkg/netdataapi"
 
 	"github.com/mattn/go-isatty"
-	"gopkg.in/yaml.v2"
 )
+
+var varLibDir = os.Getenv("NETDATA_LIB_DIR")
+
+const stateFile = "god-jobs-statuses.json"
 
 var (
 	log = logger.New("plugin", "main", "main")
@@ -31,155 +29,130 @@ var (
 
 var isTerminal = isatty.IsTerminal(os.Stdout.Fd())
 
+/*
+	PluginConfPath: multipath.New(
+		os.Getenv("NETDATA_USER_CONFIG_DIR"),
+		os.Getenv("NETDATA_STOCK_CONFIG_DIR"),
+	),
+	ModulesConfPath: multipath.New(
+		filepath.Join(os.Getenv("NETDATA_USER_CONFIG_DIR"), "go.d"),
+		filepath.Join(os.Getenv("NETDATA_STOCK_CONFIG_DIR"), "go.d"),
+	),
+	ModulesSDConfFiles: nil,
+*/
+
+// Config is Plugin configuration.
 type Config struct {
-	Name           string
-	MinUpdateEvery int
-	UseModule      string
-	ConfDir        []string
-	SDConfPath     []string
+	Name               string
+	ConfPath           []string
+	ModulesConfPath    []string
+	ModulesSDConfFiles []string
+	StateFile          string
+	ModuleRegistry     module.Registry
+	RunModule          string
+	MinUpdateEvery     int
 }
 
 // Plugin represents orchestrator.
 type Plugin struct {
-	Name           string
-	Out            io.Writer
-	Registry       module.Registry
-	ConfDir        multipath.MultiPath
-	SDConfPath     []string
-	MinUpdateEvery int
-
-	UseModule      string
-	enabledModules module.Registry
+	Name               string
+	ConfPath           multipath.MultiPath
+	ModulesConfPath    multipath.MultiPath
+	ModulesSDConfFiles []string
+	StateFile          string
+	RunModule          string
+	MinUpdateEvery     int
+	ModuleRegistry     module.Registry
+	Out                io.Writer
 }
 
 // New creates Plugin.
-func New(cfg Config) (*Plugin, error) {
-	p := &Plugin{
-		Name: "go.d",
-		ConfDir: multipath.New(
-			os.Getenv("NETDATA_USER_CONFIG_DIR"),
-			os.Getenv("NETDATA_STOCK_CONFIG_DIR"),
-		),
-		Registry:       module.DefaultRegistry,
-		Out:            os.Stdout,
-		MinUpdateEvery: module.UpdateEvery,
-		enabledModules: make(module.Registry),
+func New(cfg Config) *Plugin {
+	return &Plugin{
+		Name:               cfg.Name,
+		ConfPath:           cfg.ConfPath,
+		ModulesConfPath:    cfg.ModulesConfPath,
+		ModulesSDConfFiles: cfg.ModulesSDConfFiles,
+		RunModule:          cfg.RunModule,
+		MinUpdateEvery:     cfg.MinUpdateEvery,
+		ModuleRegistry:     module.DefaultRegistry,
+		Out:                os.Stdout,
 	}
-
-	if cfg.Name != "" {
-		p.Name = cfg.Name
-	}
-	if cfg.MinUpdateEvery > 0 {
-		p.MinUpdateEvery = cfg.MinUpdateEvery
-	}
-	if cfg.UseModule != "" {
-		p.UseModule = cfg.UseModule
-	}
-	if len(cfg.ConfDir) > 0 {
-		p.ConfDir = multipath.New(cfg.ConfDir...)
-	}
-	if len(cfg.SDConfPath) > 0 {
-		p.SDConfPath = cfg.SDConfPath
-	}
-
-	if !isTerminal {
-		logger.SetPluginName(p.Name, log)
-	}
-
-	pluginCfg, err := p.loadConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	p.loadModules(*pluginCfg)
-	if len(p.enabledModules) == 0 {
-		return nil, errors.New("no modules to run")
-	}
-
-	if pluginCfg.MaxProcs > 0 {
-		runtime.GOMAXPROCS(pluginCfg.MaxProcs)
-	}
-
-	log.Infof("maximum number of used CPUs %d", pluginCfg.MaxProcs)
-	log.Infof("minimum update every %d", p.MinUpdateEvery)
-
-	return p, nil
 }
+
+type readyOnce struct {
+	c    chan struct{}
+	once sync.Once
+}
+
+func newReadyOnce() *readyOnce {
+	return &readyOnce{c: make(chan struct{})}
+}
+
+func (c *readyOnce) ready()                 { c.once.Do(func() { close(c.c) }) }
+func (c *readyOnce) isReady() chan struct{} { return c.c }
 
 // Run
 func (p *Plugin) Run() {
 	go signalHandling()
+	go keepAlive()
+	run(p)
+}
 
-	if !isTerminal {
-		go keepAlive()
-	}
+func run(p *Plugin) {
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGHUP)
+	reload(ch, p)
+}
 
-	dm, err := p.initDiscoveryManager()
-	if err != nil {
-		panic(err)
-	}
-
-	bm := build.NewManager()
-	rm := run.NewManager()
-	bm.Discoverer = dm
-	bm.Runner = rm
-	bm.Modules = p.enabledModules
-	bm.Out = p.Out
-	bm.PluginName = p.Name
-
+func reload(ch chan os.Signal, p *Plugin) {
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	once := newReadyOnce()
+	go p.run(ctx, once)
+
+	<-ch
+	cancel()
+	<-once.isReady()
+	reload(ch, p)
+}
+
+func (p *Plugin) run(ctx context.Context, once *readyOnce) {
+	defer once.ready()
+	discoverer, builder, saver, runner, err := p.setup()
+	if err != nil {
+		return
+	}
+
+	in := make(chan []*confgroup.Group)
 	var wg sync.WaitGroup
 
 	wg.Add(1)
-	go func() { defer wg.Done(); rm.Run(ctx) }()
+	go func() { defer wg.Done(); runner.Run(ctx) }()
 
 	wg.Add(1)
-	go func() { defer wg.Done(); bm.Run(ctx) }()
+	go func() { defer wg.Done(); builder.Run(ctx, in) }()
+
+	wg.Add(1)
+	go func() { defer wg.Done(); discoverer.Run(ctx, in) }()
+
+	if saver != nil {
+		wg.Add(1)
+		go func() { defer wg.Done(); saver.Run(ctx) }()
+	}
 
 	wg.Wait()
 	<-ctx.Done()
 }
 
-func (p *Plugin) initDiscoveryManager() (*discovery.Manager, error) {
-	var paths, dummyPaths []string
-	reg := confgroup.Registry{}
-
-	for name, creator := range p.enabledModules {
-		reg.Register(name, confgroup.Default{
-			MinUpdateEvery:     p.MinUpdateEvery,
-			UpdateEvery:        creator.UpdateEvery,
-			AutoDetectionRetry: creator.AutoDetectionRetry,
-			Priority:           creator.Priority,
-		})
-
-		path, err := p.ConfDir.Find(name + ".conf")
-		if err != nil && !multipath.IsNotFound(err) {
-			continue
-		}
-
-		if err != nil {
-			//dummyPaths = append(dummyPaths, name)
-		} else {
-			paths = append(paths, path)
-		}
-	}
-
-	return discovery.NewManager(discovery.Config{
-		Registry: reg,
-		File: file.Config{
-			Dummy: dummyPaths,
-			Read:  paths,
-			Watch: p.SDConfPath,
-		},
-	})
+func (p *Plugin) disable() {
+	_ = netdataapi.New(p.Out).DISABLE()
 }
 
 func signalHandling() {
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGPIPE)
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM, syscall.SIGPIPE)
 
-	sig := <-sigCh
+	sig := <-ch
 	log.Infof("received %s signal (%d). Terminating...", sig, sig)
 
 	switch sig {
@@ -191,68 +164,10 @@ func signalHandling() {
 }
 
 func keepAlive() {
-	t := time.Tick(time.Second)
-	for range t {
+	if isTerminal {
+		return
+	}
+	for range time.Tick(time.Second) {
 		_, _ = fmt.Fprint(os.Stdout, "\n")
 	}
-}
-
-func (p *Plugin) loadConfig() (*config, error) {
-	path, err := p.ConfDir.Find(p.Name + ".conf")
-
-	if err != nil && !multipath.IsNotFound(err) {
-		return nil, fmt.Errorf("find configuration file: %v", err)
-	}
-
-	cfg := config{
-		Enabled:    true,
-		DefaultRun: true,
-		MaxProcs:   0,
-		Modules:    nil,
-	}
-
-	if err != nil && multipath.IsNotFound(err) {
-		log.Warningf("find configuration file: %v, will use defaults", err)
-		return &cfg, nil
-	}
-
-	if err := loadYAML(&cfg, path); err != nil {
-		return nil, fmt.Errorf("load configuration: %v", err)
-	}
-	return &cfg, nil
-}
-
-func (p *Plugin) loadModules(cfg config) {
-	all := p.UseModule == "all" || p.UseModule == ""
-
-	for name, creator := range p.Registry {
-		if !all && p.UseModule != name {
-			continue
-		}
-		if all && creator.Disabled && !cfg.isModuleExplicitlyEnabled(name) {
-			log.Infof("module '%s' disabled by default", name)
-			continue
-		}
-		if all && !cfg.isModuleImplicitlyEnabled(name) {
-			log.Infof("module '%s' disabled in configuration file", name)
-			continue
-		}
-		p.enabledModules[name] = creator
-	}
-}
-
-func loadYAML(conf interface{}, path string) error {
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	if err = yaml.NewDecoder(f).Decode(conf); err != nil {
-		if err == io.EOF {
-			return nil
-		}
-		return err
-	}
-	return nil
 }

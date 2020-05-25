@@ -36,7 +36,7 @@ func NewWatcher(reg confgroup.Registry, paths []string) *Watcher {
 	return d
 }
 
-func (w *Watcher) Discover(ctx context.Context, in chan<- []*confgroup.Group) {
+func (w *Watcher) Run(ctx context.Context, in chan<- []*confgroup.Group) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return
@@ -105,7 +105,7 @@ func (w *Watcher) processEvent(ctx context.Context, event fsnotify.Event, in cha
 	}
 
 	if isRenameOrRemove(event) {
-		// TODO handle rename
+		// TODO handle rename, should follow the file, not send empty group
 		w.cache.remove(event.Name)
 		sendGroup(ctx, in, &confgroup.Group{Source: event.Name})
 		return
@@ -120,8 +120,8 @@ func (w *Watcher) processEvent(ctx context.Context, event fsnotify.Event, in cha
 }
 
 func (w *Watcher) stop() {
-	done := make(chan struct{})
-	defer close(done)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// closing the watcher deadlocks unless all events and errors are drained.
 	go func() {
@@ -129,7 +129,7 @@ func (w *Watcher) stop() {
 			select {
 			case <-w.watcher.Errors:
 			case <-w.watcher.Events:
-			case <-done:
+			case <-ctx.Done():
 				return
 			}
 		}

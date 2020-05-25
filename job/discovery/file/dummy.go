@@ -18,7 +18,7 @@ func NewDummy(req confgroup.Registry, names []string) *Dummy {
 	}
 }
 
-func (d Dummy) Discover(ctx context.Context, in chan<- []*confgroup.Group) {
+func (d Dummy) Run(ctx context.Context, in chan<- []*confgroup.Group) {
 	select {
 	case <-ctx.Done():
 	case in <- d.groups():

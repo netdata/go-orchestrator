@@ -14,10 +14,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type Discoverer interface {
-	Discover(ctx context.Context, in chan<- []*confgroup.Group)
-}
-
 type Runner interface {
 	Start(job jobpkg.Job)
 	Stop(fullName string)
@@ -32,11 +28,20 @@ type State interface {
 	Contains(cfg confgroup.Config, states ...string) bool
 }
 
+type (
+	dummySaver struct{}
+	dummyState struct{}
+)
+
+func (d dummySaver) Save(cfg confgroup.Config, state string)              {}
+func (d dummySaver) Remove(cfg confgroup.Config)                          {}
+func (d dummyState) Contains(cfg confgroup.Config, states ...string) bool { return false }
+
 type state = string
 
 const (
-	success    state = "success"     // successfully startCache
-	retry      state = "retryCache"  // failed, but we need keep trying autodetection
+	success    state = "success"     // successfully start
+	retry      state = "retry"       // failed, but we need keep trying autodetection
 	failed     state = "failed"      // failed
 	duplicate  state = "duplicate"   // there is already 'success' job with same FullName
 	buildError state = "build_error" // error during building
@@ -44,10 +49,9 @@ const (
 
 type (
 	Manager struct {
-		Discoverer Discoverer
-		Runner     Runner
-		//Saver      StateSaver
-		//PrevState  State
+		Runner    Runner
+		Saver     StateSaver
+		PrevState State
 
 		PluginName string
 		Out        io.Writer
@@ -65,6 +69,8 @@ type (
 
 func NewManager() *Manager {
 	mgr := &Manager{
+		Saver:      dummySaver{},
+		PrevState:  dummyState{},
 		grpCache:   newGroupCache(),
 		startCache: newStartedCache(),
 		retryCache: newRetryCache(),
@@ -75,20 +81,16 @@ func NewManager() *Manager {
 	return mgr
 }
 
-func (m *Manager) Run(ctx context.Context) {
-	in := make(chan []*confgroup.Group)
+func (m *Manager) Run(ctx context.Context, in chan []*confgroup.Group) {
 	var wg sync.WaitGroup
-
-	wg.Add(1)
-	go func() { defer wg.Done(); m.runHandleEvents(ctx) }()
 
 	wg.Add(1)
 	go func() { defer wg.Done(); m.runProcessing(ctx, in) }()
 
 	wg.Add(1)
-	go func() { defer wg.Done(); m.Discoverer.Discover(ctx, in) }()
+	go func() { defer wg.Done(); m.runHandleEvents(ctx) }()
 
-	wg.Done()
+	wg.Wait()
 	<-ctx.Done()
 }
 
@@ -168,7 +170,7 @@ func (m *Manager) handleRemove(ctx context.Context, cfgs []confgroup.Config) {
 
 func (m *Manager) handleAddCfg(ctx context.Context, cfg confgroup.Config) {
 	if m.startCache.has(cfg) {
-		//m.Saver.Save(cfg, duplicate)
+		m.Saver.Save(cfg, duplicate)
 		return
 	}
 
@@ -180,28 +182,28 @@ func (m *Manager) handleAddCfg(ctx context.Context, cfg confgroup.Config) {
 
 	job, err := m.buildJob(cfg)
 	if err != nil {
-		//m.Saver.Save(cfg, buildError)
+		m.Saver.Save(cfg, buildError)
 		return
 	}
 
-	//if !ok && m.PrevState.Contains(cfg, success, retry) {
-	//	// 5 minutes
-	//	job.AutoDetectEvery = 30
-	//	job.AutoDetectTries = 11
-	//}
+	if !ok && m.PrevState.Contains(cfg, success, retry) {
+		// 5 minutes
+		job.AutoDetectEvery = 30
+		job.AutoDetectTries = 11
+	}
 
 	switch runDetection(job) {
 	case success:
-		//m.Saver.Save(cfg, success)
+		m.Saver.Save(cfg, success)
 		m.Runner.Start(job)
 		m.startCache.put(cfg)
 	case retry:
-		//m.Saver.Save(cfg, retry)
+		m.Saver.Save(cfg, retry)
 		ctx, cancel := context.WithCancel(ctx)
 		m.retryCache.put(cfg, cancel)
 		go retryTask(ctx, m.retryCh, cfg)
 	case failed:
-		//m.Saver.Save(cfg, failed)
+		m.Saver.Save(cfg, failed)
 		job.Cleanup()
 	default:
 		// TODO: log, this should happen never
@@ -209,7 +211,7 @@ func (m *Manager) handleAddCfg(ctx context.Context, cfg confgroup.Config) {
 }
 
 func (m *Manager) handleRemoveCfg(cfg confgroup.Config) {
-	//defer m.Saver.Remove(cfg)
+	defer m.Saver.Remove(cfg)
 	if m.startCache.has(cfg) {
 		m.Runner.Stop(cfg.FullName())
 		m.startCache.remove(cfg)

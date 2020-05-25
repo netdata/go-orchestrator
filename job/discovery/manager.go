@@ -28,7 +28,7 @@ func validateConfig(cfg Config) error {
 
 type (
 	discoverer interface {
-		Discover(ctx context.Context, in chan<- []*confgroup.Group)
+		Run(ctx context.Context, in chan<- []*confgroup.Group)
 	}
 	Manager struct {
 		discoverers []discoverer
@@ -70,7 +70,7 @@ func (m *Manager) registerDiscoverers(cfg Config) error {
 	return nil
 }
 
-func (m *Manager) Discover(ctx context.Context, in chan<- []*confgroup.Group) {
+func (m *Manager) Run(ctx context.Context, in chan<- []*confgroup.Group) {
 	var wg sync.WaitGroup
 
 	for _, d := range m.discoverers {
@@ -93,7 +93,7 @@ func (m *Manager) Discover(ctx context.Context, in chan<- []*confgroup.Group) {
 
 func (m *Manager) runDiscoverer(ctx context.Context, d discoverer) {
 	updates := make(chan []*confgroup.Group)
-	go d.Discover(ctx, updates)
+	go d.Run(ctx, updates)
 
 	for {
 		select {
