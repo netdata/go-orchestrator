@@ -11,7 +11,6 @@ import (
 
 type Config struct {
 	Registry confgroup.Registry
-	Dummy    []string
 	Read     []string
 	Watch    []string
 }
@@ -20,8 +19,8 @@ func validateConfig(cfg Config) error {
 	if len(cfg.Registry) == 0 {
 		return errors.New("empty config registry")
 	}
-	if len(cfg.Dummy)+len(cfg.Read)+len(cfg.Watch) == 0 {
-		return errors.New("empty config")
+	if len(cfg.Read)+len(cfg.Watch) == 0 {
+		return errors.New("discoverers not set")
 	}
 	return nil
 }
@@ -49,9 +48,6 @@ func NewDiscovery(cfg Config) (*Discovery, error) {
 }
 
 func (d *Discovery) registerDiscoverers(cfg Config) error {
-	if len(cfg.Dummy) != 0 {
-		d.discoverers = append(d.discoverers, NewDummy(cfg.Registry, cfg.Dummy))
-	}
 	if len(cfg.Read) != 0 {
 		d.discoverers = append(d.discoverers, NewReader(cfg.Registry, cfg.Read))
 	}

@@ -8,19 +8,21 @@ import (
 	"time"
 
 	"github.com/netdata/go-orchestrator/job/confgroup"
+	"github.com/netdata/go-orchestrator/job/discovery/dummy"
 	"github.com/netdata/go-orchestrator/job/discovery/file"
 )
 
 type Config struct {
 	Registry confgroup.Registry
 	File     file.Config
+	Dummy    dummy.Config
 }
 
 func validateConfig(cfg Config) error {
 	if len(cfg.Registry) == 0 {
-		return errors.New("config registry not set")
+		return errors.New("empty config registry")
 	}
-	if len(cfg.File.Dummy)+len(cfg.File.Read)+len(cfg.File.Watch) == 0 {
+	if len(cfg.File.Read)+len(cfg.File.Watch) == 0 && len(cfg.Dummy.Names) == 0 {
 		return errors.New("discoverers not set")
 	}
 	return nil
@@ -57,13 +59,24 @@ func NewManager(cfg Config) (*Manager, error) {
 }
 
 func (m *Manager) registerDiscoverers(cfg Config) error {
-	cfg.File.Registry = cfg.Registry
-	d, err := file.NewDiscovery(cfg.File)
-	if err != nil {
-		return err
+	if len(cfg.File.Read) > 0 || len(cfg.File.Watch) > 0 {
+		cfg.File.Registry = cfg.Registry
+		d, err := file.NewDiscovery(cfg.File)
+		if err != nil {
+			return err
+		}
+		m.discoverers = append(m.discoverers, d)
 	}
 
-	m.discoverers = append(m.discoverers, d)
+	if len(cfg.Dummy.Names) > 0 {
+		cfg.Dummy.Registry = cfg.Registry
+		d, err := dummy.NewDiscovery(cfg.Dummy)
+		if err != nil {
+			return err
+		}
+		m.discoverers = append(m.discoverers, d)
+	}
+
 	if len(m.discoverers) == 0 {
 		return errors.New("zero registered discoverers")
 	}

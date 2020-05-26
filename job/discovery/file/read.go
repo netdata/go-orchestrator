@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/netdata/go-orchestrator/job/confgroup"
@@ -56,7 +57,7 @@ func (r Reader) groups() (groups []*confgroup.Group) {
 		}
 
 		for _, path := range matches {
-			if ok, err := isFile(path); !ok || err != nil {
+			if fi, err := os.Stat(path); err != nil || !fi.Mode().IsRegular() {
 				continue
 			}
 

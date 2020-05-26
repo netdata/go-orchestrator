@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"github.com/netdata/go-orchestrator/job/discovery/dummy"
 	"io"
 	"os"
 
@@ -75,7 +76,7 @@ func (p *Plugin) loadEnabledModules(cfg config) module.Registry {
 }
 
 func (p *Plugin) buildDiscoveryConf(enabled module.Registry) discovery.Config {
-	var paths, dummyPaths []string
+	var paths, dummyNames []string
 	reg := confgroup.Registry{}
 
 	for name, creator := range enabled {
@@ -89,7 +90,7 @@ func (p *Plugin) buildDiscoveryConf(enabled module.Registry) discovery.Config {
 
 	if len(p.ModulesConfPath) == 0 {
 		for name := range enabled {
-			dummyPaths = append(dummyPaths, name)
+			dummyNames = append(dummyNames, name)
 		}
 	} else {
 		for name := range enabled {
@@ -99,7 +100,7 @@ func (p *Plugin) buildDiscoveryConf(enabled module.Registry) discovery.Config {
 			}
 
 			if err != nil {
-				dummyPaths = append(dummyPaths, name)
+				dummyNames = append(dummyNames, name)
 			} else {
 				paths = append(paths, path)
 			}
@@ -108,9 +109,11 @@ func (p *Plugin) buildDiscoveryConf(enabled module.Registry) discovery.Config {
 	return discovery.Config{
 		Registry: reg,
 		File: file.Config{
-			Dummy: dummyPaths,
 			Read:  paths,
 			Watch: p.ModulesSDConfFiles,
+		},
+		Dummy: dummy.Config{
+			Names: dummyNames,
 		},
 	}
 }

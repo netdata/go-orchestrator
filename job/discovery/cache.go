@@ -11,6 +11,9 @@ func newCache() *cache {
 }
 
 func (c cache) update(groups []*confgroup.Group) {
+	if len(groups) == 0 {
+		return
+	}
 	for _, group := range groups {
 		if group != nil {
 			c[group.Source] = group

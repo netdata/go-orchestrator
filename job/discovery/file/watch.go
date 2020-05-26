@@ -2,9 +2,9 @@ package file
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/netdata/go-orchestrator/job/confgroup"
@@ -14,24 +14,26 @@ import (
 
 type (
 	Watcher struct {
-		paths   []string
-		reg     confgroup.Registry
-		watcher *fsnotify.Watcher
-		cache   cache
+		paths        []string
+		reg          confgroup.Registry
+		watcher      *fsnotify.Watcher
+		cache        cache
+		refreshEvery time.Duration
 	}
-	cache map[string]struct{}
+	cache map[string]time.Time
 )
 
-func (c cache) has(path string) bool { _, ok := c[path]; return ok }
-func (c cache) remove(path string)   { delete(c, path) }
-func (c cache) put(path string)      { c[path] = struct{}{} }
+func (c cache) lookup(path string) (time.Time, bool) { v, ok := c[path]; return v, ok }
+func (c cache) remove(path string)                   { delete(c, path) }
+func (c cache) put(fi os.FileInfo)                   { c[fi.Name()] = fi.ModTime() }
 
 func NewWatcher(reg confgroup.Registry, paths []string) *Watcher {
 	d := &Watcher{
-		paths:   paths,
-		reg:     reg,
-		watcher: nil,
-		cache:   make(cache),
+		paths:        paths,
+		reg:          reg,
+		watcher:      nil,
+		cache:        make(cache),
+		refreshEvery: time.Minute,
 	}
 	return d
 }
@@ -44,9 +46,9 @@ func (w *Watcher) Run(ctx context.Context, in chan<- []*confgroup.Group) {
 
 	w.watcher = watcher
 	defer w.stop()
-	w.refreshFiles(ctx, in)
+	w.refresh(ctx, in)
 
-	tk := time.NewTicker(time.Second * 5)
+	tk := time.NewTicker(w.refreshEvery)
 	defer tk.Stop()
 
 	for {
@@ -54,9 +56,12 @@ func (w *Watcher) Run(ctx context.Context, in chan<- []*confgroup.Group) {
 		case <-ctx.Done():
 			return
 		case <-tk.C:
-			w.refreshFiles(ctx, in)
+			w.refresh(ctx, in)
 		case event := <-w.watcher.Events:
-			w.processEvent(ctx, event, in)
+			if event.Name == "" || isChmod(event) {
+				break
+			}
+			w.refresh(ctx, in)
 		case err := <-w.watcher.Errors:
 			if err != nil {
 			}
@@ -64,59 +69,67 @@ func (w *Watcher) Run(ctx context.Context, in chan<- []*confgroup.Group) {
 	}
 }
 
-func (w *Watcher) refreshFiles(ctx context.Context, in chan<- []*confgroup.Group) {
-	var groups []*confgroup.Group
+func (w *Watcher) listFiles() (files []string) {
 	for _, pattern := range w.paths {
 		matches, err := filepath.Glob(pattern)
 		if err != nil {
 			continue
 		}
-
-		for _, path := range matches {
-			if w.cache.has(path) {
-				continue
-			}
-
-			if ok, err := isFile(path); !ok || err != nil {
-				continue
-			}
-
-			group, err := readFile(w.reg, path)
-			if err != nil {
-				continue
-			}
-			// TODO: this order is probably wrong
-			w.cache.put(path)
-			groups = append(groups, group)
-
-			if err := w.watcher.Add(path); err != nil {
-				fmt.Println(err)
-				continue
-			}
-
-		}
+		files = append(files, matches...)
 	}
-	sendGroups(ctx, in, groups)
+	return files
 }
 
-func (w *Watcher) processEvent(ctx context.Context, event fsnotify.Event, in chan<- []*confgroup.Group) {
-	if event.Name == "" || isChmod(event) {
-		return
-	}
+func (w *Watcher) refresh(ctx context.Context, in chan<- []*confgroup.Group) {
+	var added, removed []*confgroup.Group
+	seen := make(map[string]bool)
 
-	if isRenameOrRemove(event) {
-		// TODO handle rename, should follow the file, not send empty group
-		w.cache.remove(event.Name)
-		sendGroup(ctx, in, &confgroup.Group{Source: event.Name})
-		return
-	}
+	for _, file := range w.listFiles() {
+		fi, err := os.Stat(file)
+		if err != nil {
+			continue
+		}
 
-	group, err := readFile(w.reg, event.Name)
-	if err != nil {
-		return
-	}
+		if !fi.Mode().IsRegular() {
+			continue
+		}
 
-	sendGroup(ctx, in, group)
+		seen[fi.Name()] = true
+		if v, ok := w.cache.lookup(fi.Name()); ok && v.Equal(fi.ModTime()) {
+			continue
+		}
+		w.cache.put(fi)
+
+		group, err := readFile(w.reg, fi.Name())
+		if err != nil {
+			continue
+		}
+		added = append(added, group)
+	}
+	sendGroups(ctx, in, added)
+
+	for name := range w.cache {
+		if seen[name] {
+			continue
+		}
+		w.cache.remove(name)
+		removed = append(removed, &confgroup.Group{Source: name})
+	}
+	sendGroups(ctx, in, removed)
+
+	w.watchDirs()
+}
+
+func (w *Watcher) watchDirs() {
+	for _, p := range w.paths {
+		if idx := strings.LastIndex(p, "/"); idx > -1 {
+			p = p[:idx]
+		} else {
+			p = "./"
+		}
+		if err := w.watcher.Add(p); err != nil {
+		}
+	}
 }
 
 func (w *Watcher) stop() {
@@ -139,27 +152,14 @@ func (w *Watcher) stop() {
 	}
 }
 
-func isRenameOrRemove(event fsnotify.Event) bool {
-	return event.Op&fsnotify.Rename == fsnotify.Rename || event.Op&fsnotify.Remove == fsnotify.Remove
-}
-
 func isChmod(event fsnotify.Event) bool {
 	return event.Op^fsnotify.Chmod == 0
 }
 
-func isFile(path string) (bool, error) {
-	fi, err := os.Stat(path)
-	return err == nil && fi != nil && fi.Mode().IsRegular(), err
-}
-
-func sendGroup(ctx context.Context, in chan<- []*confgroup.Group, group *confgroup.Group) {
-	select {
-	case <-ctx.Done():
-	case in <- []*confgroup.Group{group}:
-	}
-}
-
 func sendGroups(ctx context.Context, in chan<- []*confgroup.Group, groups []*confgroup.Group) {
+	if len(groups) == 0 {
+		return
+	}
 	select {
 	case <-ctx.Done():
 	case in <- groups:
