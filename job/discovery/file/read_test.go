@@ -9,6 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestReader_String(t *testing.T) {
+	assert.NotEmpty(t, NewReader(confgroup.Registry{}, nil))
+}
+
 func TestNewReader(t *testing.T) {
 	tests := map[string]struct {
 		reg   confgroup.Registry

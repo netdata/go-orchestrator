@@ -44,12 +44,12 @@ func (sim discoverySim) run(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	go sim.discovery.Run(ctx, in)
-	time.Sleep(time.Millisecond * 200)
+	time.Sleep(time.Millisecond * 250)
 
 	for _, after := range sim.afterRun {
+		time.Sleep(after.delay)
 		if after.action != nil {
 			after.action()
-			time.Sleep(after.delay)
 		}
 	}
 	actual := <-out
@@ -61,7 +61,7 @@ func (sim discoverySim) run(t *testing.T) {
 }
 
 func (sim discoverySim) collectGroups(t *testing.T, in, out chan []*confgroup.Group) {
-	timeout := time.Second * 10
+	timeout := time.Second * 5
 	var groups []*confgroup.Group
 loop:
 	for {
@@ -95,15 +95,15 @@ func (d *tmpDir) cleanup() {
 	assert.NoError(d.t, os.RemoveAll(d.dir))
 }
 
+func (d *tmpDir) join(filename string) string {
+	return filepath.Join(d.dir, filename)
+}
+
 func (d *tmpDir) createFile(pattern string) string {
 	f, err := ioutil.TempFile(d.dir, pattern)
 	require.NoError(d.t, err)
 	f.Close()
 	return f.Name()
-}
-
-func (d *tmpDir) join(filename string) string {
-	return filepath.Join(d.dir, filename)
 }
 
 func (d *tmpDir) removeFile(filename string) {

@@ -137,12 +137,10 @@ func (c config) isEnabled(moduleName string, explicit bool) bool {
 }
 
 func (c *config) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	type cfg config
-	cc := cfg(*c)
-	if err := unmarshal(&cc); err != nil {
+	type plain config
+	if err := unmarshal((*plain)(c)); err != nil {
 		return err
 	}
-	*c = config(cc)
 
 	var m map[string]interface{}
 	if err := unmarshal(&m); err != nil {

@@ -47,7 +47,7 @@ func NewManager(cfg Config) (*Manager, error) {
 	}
 	mgr := &Manager{
 		send:        make(chan struct{}, 1),
-		sendEvery:   time.Second,
+		sendEvery:   time.Second * 5, // some timeout is needed to aggregate all changes
 		discoverers: make([]discoverer, 0),
 		mux:         &sync.RWMutex{},
 		cache:       newCache(),
@@ -56,6 +56,10 @@ func NewManager(cfg Config) (*Manager, error) {
 		return nil, fmt.Errorf("discovery manager initializaion: %v", err)
 	}
 	return mgr, nil
+}
+
+func (m Manager) String() string {
+	return fmt.Sprintf("discovery manager: %v", m.discoverers)
 }
 
 func (m *Manager) registerDiscoverers(cfg Config) error {

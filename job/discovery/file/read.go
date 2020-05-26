@@ -36,6 +36,10 @@ func NewReader(reg confgroup.Registry, paths []string) *Reader {
 	}
 }
 
+func (r Reader) String() string {
+	return "file reader"
+}
+
 func (r Reader) Run(ctx context.Context, in chan<- []*confgroup.Group) {
 	select {
 	case <-ctx.Done():

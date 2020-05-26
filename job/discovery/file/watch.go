@@ -25,7 +25,7 @@ type (
 
 func (c cache) lookup(path string) (time.Time, bool) { v, ok := c[path]; return v, ok }
 func (c cache) remove(path string)                   { delete(c, path) }
-func (c cache) put(fi os.FileInfo)                   { c[fi.Name()] = fi.ModTime() }
+func (c cache) put(path string, modTime time.Time)   { c[path] = modTime }
 
 func NewWatcher(reg confgroup.Registry, paths []string) *Watcher {
 	d := &Watcher{
@@ -36,6 +36,10 @@ func NewWatcher(reg confgroup.Registry, paths []string) *Watcher {
 		refreshEvery: time.Minute,
 	}
 	return d
+}
+
+func (w Watcher) String() string {
+	return "file watcher"
 }
 
 func (w *Watcher) Run(ctx context.Context, in chan<- []*confgroup.Group) {
@@ -61,6 +65,13 @@ func (w *Watcher) Run(ctx context.Context, in chan<- []*confgroup.Group) {
 			if event.Name == "" || isChmod(event) {
 				break
 			}
+			if isRename(event) {
+				// It is common to modify files using vim.
+				// When writing to a file a backup is made. "backupcopy" option tells how it's done.
+				// Default is "no": rename the file and write a new one.
+				// This is cheap attempt to not send empty group for the old file.
+				time.Sleep(time.Millisecond * 100)
+			}
 			w.refresh(ctx, in)
 		case err := <-w.watcher.Errors:
 			if err != nil {
@@ -81,11 +92,16 @@ func (w *Watcher) listFiles() (files []string) {
 }
 
 func (w *Watcher) refresh(ctx context.Context, in chan<- []*confgroup.Group) {
+	select {
+	case <-ctx.Done():
+		return
+	default:
+	}
 	var added, removed []*confgroup.Group
 	seen := make(map[string]bool)
 
 	for _, file := range w.listFiles() {
-		fi, err := os.Stat(file)
+		fi, err := os.Lstat(file)
 		if err != nil {
 			continue
 		}
@@ -94,19 +110,18 @@ func (w *Watcher) refresh(ctx context.Context, in chan<- []*confgroup.Group) {
 			continue
 		}
 
-		seen[fi.Name()] = true
-		if v, ok := w.cache.lookup(fi.Name()); ok && v.Equal(fi.ModTime()) {
+		seen[file] = true
+		if v, ok := w.cache.lookup(file); ok && v.Equal(fi.ModTime()) {
 			continue
 		}
-		w.cache.put(fi)
+		w.cache.put(file, fi.ModTime())
 
-		group, err := parseFile(w.reg, fi.Name())
+		group, err := parseFile(w.reg, file)
 		if err != nil {
 			continue
 		}
 		added = append(added, group)
 	}
-	sendGroups(ctx, in, added)
 
 	for name := range w.cache {
 		if seen[name] {
@@ -115,19 +130,19 @@ func (w *Watcher) refresh(ctx context.Context, in chan<- []*confgroup.Group) {
 		w.cache.remove(name)
 		removed = append(removed, &confgroup.Group{Source: name})
 	}
-	sendGroups(ctx, in, removed)
 
+	sendGroups(ctx, in, append(added, removed...))
 	w.watchDirs()
 }
 
 func (w *Watcher) watchDirs() {
-	for _, p := range w.paths {
-		if idx := strings.LastIndex(p, "/"); idx != -1 {
-			p = p[:idx]
+	for _, path := range w.paths {
+		if idx := strings.LastIndex(path, "/"); idx > -1 {
+			path = path[:idx]
 		} else {
-			p = "./"
+			path = "./"
 		}
-		if err := w.watcher.Add(p); err != nil {
+		if err := w.watcher.Add(path); err != nil {
 		}
 	}
 }
@@ -154,6 +169,10 @@ func (w *Watcher) stop() {
 
 func isChmod(event fsnotify.Event) bool {
 	return event.Op^fsnotify.Chmod == 0
+}
+
+func isRename(event fsnotify.Event) bool {
+	return event.Op&fsnotify.Rename == fsnotify.Rename
 }
 
 func sendGroups(ctx context.Context, in chan<- []*confgroup.Group, groups []*confgroup.Group) {

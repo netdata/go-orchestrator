@@ -39,6 +39,10 @@ func NewDiscovery(cfg Config) (*Discovery, error) {
 	return d, nil
 }
 
+func (d Discovery) String() string {
+	return "dummy discovery"
+}
+
 func (d Discovery) Run(ctx context.Context, in chan<- []*confgroup.Group) {
 	select {
 	case <-ctx.Done():
