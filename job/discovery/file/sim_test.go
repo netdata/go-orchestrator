@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 	"time"
 
@@ -51,9 +52,12 @@ func (sim discoverySim) run(t *testing.T) {
 			time.Sleep(after.delay)
 		}
 	}
-	groups := <-out
+	actual := <-out
 
-	assert.Equal(t, sim.expectedGroups, groups)
+	sortGroups(actual)
+	sortGroups(sim.expectedGroups)
+
+	assert.Equal(t, sim.expectedGroups, actual)
 }
 
 func (sim discoverySim) collectGroups(t *testing.T, in, out chan []*confgroup.Group) {
@@ -62,8 +66,8 @@ func (sim discoverySim) collectGroups(t *testing.T, in, out chan []*confgroup.Gr
 loop:
 	for {
 		select {
-		case inGroups := <-in:
-			if groups = append(groups, inGroups...); len(groups) >= len(sim.expectedGroups) {
+		case updates := <-in:
+			if groups = append(groups, updates...); len(groups) >= len(sim.expectedGroups) {
 				break loop
 			}
 		case <-time.After(timeout):
@@ -81,6 +85,7 @@ type tmpDir struct {
 }
 
 func newTmpDir(t *testing.T, pattern string) *tmpDir {
+	pattern = "netdata-go-test-discovery-file-" + pattern
 	dir, err := ioutil.TempDir(os.TempDir(), pattern)
 	require.NoError(t, err)
 	return &tmpDir{dir: dir, t: t}
@@ -111,4 +116,11 @@ func (d *tmpDir) writeYAML(filename string, in interface{}) {
 	require.NoError(d.t, err)
 	err = ioutil.WriteFile(filename, bs, 0644)
 	require.NoError(d.t, err)
+}
+
+func sortGroups(groups []*confgroup.Group) {
+	if len(groups) == 0 {
+		return
+	}
+	sort.Slice(groups, func(i, j int) bool { return groups[i].Source < groups[j].Source })
 }

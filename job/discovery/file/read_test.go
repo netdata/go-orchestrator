@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"github.com/netdata/go-orchestrator/job/confgroup"
+	"github.com/netdata/go-orchestrator/module"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestNewReader(t *testing.T) {
@@ -26,23 +26,56 @@ func TestNewReader(t *testing.T) {
 }
 
 func TestReader_Run(t *testing.T) {
-	//tests := map[string]func(*tmpDir) discoverySim{
-	//	"": func(td *tmpDir) discoverySim {
-	//		return discoverySim{}
-	//	},
-	//}
-	//
-	//for name, createSim := range tests {
-	//	t.Run(name, func(t *testing.T) {
-	//		td := newTmpDir(t, "netdata-god-discovery-file-read-*")
-	//		defer td.cleanup()
-	//		createSim(td).run(t)
-	//	})
-	//}
-}
+	tmp := newTmpDir(t, "reader-run-*")
+	defer tmp.cleanup()
 
-func prepareDiscovery(t *testing.T, cfg Config) *Discovery {
-	d, err := NewDiscovery(cfg)
-	require.NoError(t, err)
-	return d
+	module1 := tmp.join("module1.conf")
+	module2 := tmp.join("module2.conf")
+	tmp.writeYAML(module1, staticConfig{
+		Jobs: []confgroup.Config{{"name": "name"}},
+	})
+	tmp.writeYAML(module2, staticConfig{
+		Jobs: []confgroup.Config{{"name": "name"}},
+	})
+	reg := confgroup.Registry{
+		"module1": {},
+		"module2": {},
+	}
+	discovery := prepareDiscovery(t, Config{
+		Registry: reg,
+		Read:     []string{module1, module2},
+	})
+	expected := []*confgroup.Group{
+		{
+			Source: module1,
+			Configs: []confgroup.Config{
+				{
+					"name":                "name",
+					"module":              "module1",
+					"update_every":        module.UpdateEvery,
+					"autodetection_retry": module.AutoDetectionRetry,
+					"priority":            module.Priority,
+				},
+			},
+		},
+		{
+			Source: module2,
+			Configs: []confgroup.Config{
+				{
+					"name":                "name",
+					"module":              "module2",
+					"update_every":        module.UpdateEvery,
+					"autodetection_retry": module.AutoDetectionRetry,
+					"priority":            module.Priority,
+				},
+			},
+		},
+	}
+
+	sim := discoverySim{
+		discovery:      discovery,
+		expectedGroups: expected,
+	}
+
+	sim.run(t)
 }
