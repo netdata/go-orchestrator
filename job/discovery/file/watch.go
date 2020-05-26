@@ -100,7 +100,7 @@ func (w *Watcher) refresh(ctx context.Context, in chan<- []*confgroup.Group) {
 		}
 		w.cache.put(fi)
 
-		group, err := readFile(w.reg, fi.Name())
+		group, err := parseFile(w.reg, fi.Name())
 		if err != nil {
 			continue
 		}
@@ -122,7 +122,7 @@ func (w *Watcher) refresh(ctx context.Context, in chan<- []*confgroup.Group) {
 
 func (w *Watcher) watchDirs() {
 	for _, p := range w.paths {
-		if idx := strings.LastIndex(p, "/"); idx > -1 {
+		if idx := strings.LastIndex(p, "/"); idx != -1 {
 			p = p[:idx]
 		} else {
 			p = "./"

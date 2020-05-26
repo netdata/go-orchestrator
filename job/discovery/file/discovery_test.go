@@ -8,6 +8,6 @@ func TestNewDiscovery(t *testing.T) {
 }
 
 // TODO: tech dept
-func TestDiscovery_Discover(t *testing.T) {
+func TestDiscovery_Run(t *testing.T) {
 
 }
