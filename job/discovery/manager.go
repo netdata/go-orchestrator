@@ -18,10 +18,10 @@ type Config struct {
 
 func validateConfig(cfg Config) error {
 	if len(cfg.Registry) == 0 {
-		return errors.New("empty config registry")
+		return errors.New("config registry not set")
 	}
 	if len(cfg.File.Dummy)+len(cfg.File.Read)+len(cfg.File.Watch) == 0 {
-		return errors.New("empty config")
+		return errors.New("discoverers not set")
 	}
 	return nil
 }
