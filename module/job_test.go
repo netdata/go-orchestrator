@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/netdata/go-orchestrator/pkg/logger"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -66,9 +64,7 @@ func TestJob_Panicked(t *testing.T) {
 func TestJob_AutoDetectionEvery(t *testing.T) {
 	job := newTestJob()
 
-	assert.Equal(t, job.AutoDetectionEvery(), job.autoDetectEvery)
-	job.autoDetectEvery = 1
-	assert.Equal(t, job.AutoDetectionEvery(), job.autoDetectEvery)
+	assert.Equal(t, job.AutoDetectionEvery(), job.AutoDetectEvery)
 }
 
 func TestJob_RetryAutoDetection(t *testing.T) {
@@ -83,7 +79,7 @@ func TestJob_RetryAutoDetection(t *testing.T) {
 		},
 	}
 	job.module = m
-	job.autoDetectEvery = 1
+	job.AutoDetectEvery = 1
 
 	assert.True(t, job.RetryAutoDetection())
 	assert.Equal(t, infTries, job.AutoDetectTries)
@@ -255,7 +251,7 @@ func TestJob_MainLoop(t *testing.T) {
 		job.Stop()
 	}()
 
-	job.MainLoop()
+	job.Start()
 
 	assert.True(t, m.CleanupDone)
 }
@@ -278,7 +274,7 @@ func TestJob_MainLoop_Panic(t *testing.T) {
 		job.Stop()
 	}()
 
-	job.MainLoop()
+	job.Start()
 
 	assert.True(t, job.Panicked())
 	assert.True(t, m.CleanupDone)
@@ -301,11 +297,4 @@ func TestJob_Start(t *testing.T) {
 	}()
 
 	job.Start()
-}
-
-func TestBase_SetLogger(t *testing.T) {
-	var b Base
-	b.SetLogger(&logger.Logger{})
-
-	assert.NotNil(t, b.Logger)
 }

@@ -57,7 +57,7 @@ func NewManager(cfg Config) (*Manager, error) {
 	if err := mgr.registerDiscoverers(cfg); err != nil {
 		return nil, fmt.Errorf("discovery manager initializaion: %v", err)
 	}
-	mgr.Logger = logger.NewNamed("discovery", "manager")
+	mgr.Logger = logger.New("discovery", "manager")
 	return mgr, nil
 }
 

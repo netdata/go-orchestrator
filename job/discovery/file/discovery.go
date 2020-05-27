@@ -46,7 +46,7 @@ func NewDiscovery(cfg Config) (*Discovery, error) {
 	if err := d.registerDiscoverers(cfg); err != nil {
 		return nil, fmt.Errorf("file discovery initialization: %v", err)
 	}
-	d.Logger = logger.NewNamed("discovery", "file manager")
+	d.Logger = logger.New("discovery", "file manager")
 	return &d, nil
 }
 

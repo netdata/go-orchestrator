@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/netdata/go-orchestrator/pkg/logger"
+	"github.com/netdata/go-orchestrator/pkg/netdataapi"
 )
 
 func newRuntimeChart(pluginName string) *Chart {
@@ -52,11 +53,11 @@ func NewJob(cfg JobConfig) *Job {
 		module:          cfg.Module,
 		out:             cfg.Out,
 		AutoDetectTries: infTries,
-		runtimeChart:    newRuntimeChart(cfg.PluginName),
+		runChart:        newRuntimeChart(cfg.PluginName),
 		stop:            make(chan struct{}, 1),
 		tick:            make(chan int),
 		buf:             &buf,
-		apiWriter:       apiWriter{Writer: &buf},
+		api:             netdataapi.New(&buf),
 	}
 }
 
@@ -79,12 +80,12 @@ type Job struct {
 	initialized bool
 	panicked    bool
 
-	runtimeChart *Chart
-	charts       *Charts
-	tick         chan int
-	out          io.Writer
-	buf          *bytes.Buffer
-	apiWriter    apiWriter
+	runChart *Chart
+	charts   *Charts
+	tick     chan int
+	out      io.Writer
+	buf      *bytes.Buffer
+	api      *netdataapi.API
 
 	retries int
 	prevRun time.Time
@@ -194,9 +195,9 @@ func (j *Job) cleanup() {
 	logger.GlobalMsgCountWatcher.Unregister(j.Logger)
 	j.buf.Reset()
 
-	if j.runtimeChart.created {
-		j.runtimeChart.MarkRemove()
-		j.createChart(j.runtimeChart)
+	if j.runChart.created {
+		j.runChart.MarkRemove()
+		j.createChart(j.runChart)
 	}
 	for _, chart := range *j.charts {
 		if chart.created {
@@ -212,9 +213,9 @@ func (j *Job) init() bool {
 		return true
 	}
 
-	limitedLogger := logger.NewLimited(j.pluginName, j.ModuleName(), j.Name())
-	j.Logger = limitedLogger
-	j.module.GetBase().Logger = limitedLogger
+	log := logger.NewLimited(j.ModuleName(), j.Name())
+	j.Logger = log
+	j.module.GetBase().Logger = log
 
 	j.initialized = j.module.Init()
 	return j.initialized
@@ -273,26 +274,24 @@ func (j *Job) collect() (result map[string]int64) {
 }
 
 func (j *Job) processMetrics(metrics map[string]int64, startTime time.Time, sinceLastRun int) bool {
-	if !j.runtimeChart.created {
-		j.runtimeChart.ID = fmt.Sprintf("execution_time_of_%s", j.FullName())
-		j.runtimeChart.Title = fmt.Sprintf("Execution Time for %s", j.FullName())
-		j.createChart(j.runtimeChart)
+	if !j.runChart.created {
+		j.runChart.ID = fmt.Sprintf("execution_time_of_%s", j.FullName())
+		j.runChart.Title = fmt.Sprintf("Execution Time for %s", j.FullName())
+		j.createChart(j.runChart)
 	}
 
-	var (
-		remove  []string
-		updated int
-		elapsed = int64(durationTo(time.Now().Sub(startTime), time.Millisecond))
-	)
+	elapsed := int64(durationTo(time.Now().Sub(startTime), time.Millisecond))
 
+	var i, updated int
 	for _, chart := range *j.charts {
 		if !chart.created {
 			j.createChart(chart)
 		}
 		if chart.remove {
-			remove = append(remove, chart.ID)
 			continue
 		}
+		i++
+		(*j.charts)[i] = chart
 		if len(metrics) == 0 || chart.Obsolete {
 			continue
 		}
@@ -300,26 +299,23 @@ func (j *Job) processMetrics(metrics map[string]int64, startTime time.Time, sinc
 			updated++
 		}
 	}
-
-	for _, id := range remove {
-		_ = j.charts.Remove(id)
-	}
+	*j.charts = (*j.charts)[:i]
 
 	if updated == 0 {
 		return false
 	}
-
-	j.updateChart(j.runtimeChart, map[string]int64{"time": elapsed}, sinceLastRun)
-
+	j.updateChart(j.runChart, map[string]int64{"time": elapsed}, sinceLastRun)
 	return true
 }
 
 func (j *Job) createChart(chart *Chart) {
+	defer func() { chart.created = true }()
+
 	if chart.Priority == 0 {
 		chart.Priority = j.priority
 		j.priority++
 	}
-	_ = j.apiWriter.chart(
+	_ = j.api.CHART(
 		firstNotEmpty(chart.typeID, j.FullName()),
 		chart.ID,
 		chart.OverID,
@@ -327,32 +323,30 @@ func (j *Job) createChart(chart *Chart) {
 		chart.Units,
 		chart.Fam,
 		chart.Ctx,
-		chart.Type,
+		chart.Type.String(),
 		chart.Priority,
 		j.updateEvery,
-		chart.Opts,
+		chart.Opts.String(),
 		j.pluginName,
 		j.moduleName,
 	)
 	for _, dim := range chart.Dims {
-		_ = j.apiWriter.dimension(
+		_ = j.api.DIMENSION(
 			dim.ID,
 			dim.Name,
-			dim.Algo,
+			dim.Algo.String(),
 			dim.Mul,
 			dim.Div,
-			dim.DimOpts,
+			dim.DimOpts.String(),
 		)
 	}
 	for _, v := range chart.Vars {
-		_ = j.apiWriter.varSet(
+		_ = j.api.VARIABLE(
 			v.ID,
 			v.Value,
 		)
 	}
-	_, _ = j.apiWriter.Write([]byte("\n"))
-
-	chart.created = true
+	_ = j.api.EMPTYLINE()
 }
 
 func (j *Job) updateChart(chart *Chart, collected map[string]int64, sinceLastRun int) bool {
@@ -360,44 +354,34 @@ func (j *Job) updateChart(chart *Chart, collected map[string]int64, sinceLastRun
 		sinceLastRun = 0
 	}
 
-	_ = j.apiWriter.begin(
+	_ = j.api.BEGIN(
 		firstNotEmpty(chart.typeID, j.FullName()),
 		chart.ID,
 		sinceLastRun,
 	)
-
-	var (
-		remove  []string
-		updated int
-	)
-
+	var i, updated int
 	for _, dim := range chart.Dims {
 		if dim.remove {
-			remove = append(remove, dim.ID)
 			continue
 		}
-		v, ok := collected[dim.ID]
-
-		if !ok {
-			_ = j.apiWriter.dimSetEmpty(dim.ID)
+		i++
+		chart.Dims[i] = dim
+		if v, ok := collected[dim.ID]; !ok {
+			_ = j.api.SETEMPTY(dim.ID)
 		} else {
-			_ = j.apiWriter.dimSet(dim.ID, v)
+			_ = j.api.SET(dim.ID, v)
 			updated++
 		}
 	}
+	chart.Dims = chart.Dims[:i]
 
-	for _, id := range remove {
-		_ = chart.RemoveDim(id)
-	}
-
-	for _, variable := range chart.Vars {
-		v, ok := collected[variable.ID]
-		if ok {
-			_ = j.apiWriter.varSet(variable.ID, v)
+	for _, vr := range chart.Vars {
+		if v, ok := collected[vr.ID]; ok {
+			_ = j.api.VARIABLE(vr.ID, v)
 		}
-	}
 
-	_ = j.apiWriter.end()
+	}
+	_ = j.api.END()
 
 	if chart.updated = updated > 0; chart.updated {
 		chart.Retries = 0

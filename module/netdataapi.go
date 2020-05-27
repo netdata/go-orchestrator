@@ -6,7 +6,7 @@ import (
 )
 
 type (
-	// apiWriter write native netdata orchestrator API
+	// api write native netdata orchestrator API
 	// https://github.com/firehol/netdata/wiki/External-Plugins#native-netdata-plugin-api
 	apiWriter struct {
 		// Out write to

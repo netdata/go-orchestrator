@@ -40,24 +40,19 @@ type Logger struct {
 	msgCount int64
 }
 
-// New creates a new logger
-func New(pluginName, modName, jobName string) *Logger {
+// New creates a new logger.
+func New(modName, jobName string) *Logger {
 	return &Logger{
-		formatter: newFormatter(os.Stderr, isCLI, pluginName),
+		formatter: newFormatter(os.Stderr, isCLI, Prefix),
 		modName:   modName,
 		jobName:   jobName,
 		id:        uniqueID(),
 	}
 }
 
-// NewNamed returns a new logger that uses Prefix variable as a prefix.
-func NewNamed(modName, jobName string) *Logger {
-	return New(Prefix, modName, jobName)
-}
-
 // NewLimited creates a new limited logger
-func NewLimited(pluginName, modName, jobName string) *Logger {
-	logger := New(pluginName, modName, jobName)
+func NewLimited(modName, jobName string) *Logger {
+	logger := New(modName, jobName)
 	logger.limited = true
 	GlobalMsgCountWatcher.Register(logger)
 

@@ -22,7 +22,7 @@ type (
 func NewManager() *Manager {
 	return &Manager{
 		mux:    sync.Mutex{},
-		Logger: logger.NewNamed("run", "manager"),
+		Logger: logger.New("run", "manager"),
 	}
 }
 

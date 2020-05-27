@@ -35,7 +35,7 @@ func NewReader(reg confgroup.Registry, paths []string) *Reader {
 	return &Reader{
 		reg:    reg,
 		paths:  paths,
-		Logger: logger.NewNamed("discovery", "file reader"),
+		Logger: logger.New("discovery", "file reader"),
 	}
 }
 

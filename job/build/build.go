@@ -74,7 +74,7 @@ func NewManager() *Manager {
 		Saver:      dummySaver{},
 		PrevState:  dummyState{},
 		Out:        ioutil.Discard,
-		Logger:     logger.NewNamed("build", "manager"),
+		Logger:     logger.New("build", "manager"),
 		grpCache:   newGroupCache(),
 		startCache: newStartedCache(),
 		retryCache: newRetryCache(),

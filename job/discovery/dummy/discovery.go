@@ -37,7 +37,7 @@ func NewDiscovery(cfg Config) (*Discovery, error) {
 	d := &Discovery{
 		reg:    cfg.Registry,
 		names:  cfg.Names,
-		Logger: logger.NewNamed("discovery", "dummy"),
+		Logger: logger.New("discovery", "dummy"),
 	}
 	return d, nil
 }
