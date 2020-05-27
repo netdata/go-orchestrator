@@ -38,7 +38,7 @@ func (c Config) Apply(def Default) {
 		v := firstPositive(def.Priority, module.Priority)
 		c.Set("priority", v)
 	}
-	if c.UpdateEvery() < def.MinUpdateEvery && def.MinUpdateEvery > 0 {
+	if c.UpdateEvery() > def.MinUpdateEvery && def.MinUpdateEvery > 0 {
 		c.Set("update_every", def.MinUpdateEvery)
 	}
 	if c.Name() == "" {
