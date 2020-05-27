@@ -1,12 +1,12 @@
 package plugin
 
 import (
-	"github.com/netdata/go-orchestrator/job/discovery/dummy"
 	"io"
 	"os"
 
 	"github.com/netdata/go-orchestrator/job/confgroup"
 	"github.com/netdata/go-orchestrator/job/discovery"
+	"github.com/netdata/go-orchestrator/job/discovery/dummy"
 	"github.com/netdata/go-orchestrator/job/discovery/file"
 	"github.com/netdata/go-orchestrator/module"
 	"github.com/netdata/go-orchestrator/pkg/multipath"

@@ -24,6 +24,7 @@ type (
 )
 
 func (c cache) lookup(path string) (time.Time, bool) { v, ok := c[path]; return v, ok }
+func (c cache) has(path string) bool                 { _, ok := c.lookup(path); return ok }
 func (c cache) remove(path string)                   { delete(c, path) }
 func (c cache) put(path string, modTime time.Time)   { c[path] = modTime }
 
@@ -62,7 +63,10 @@ func (w *Watcher) Run(ctx context.Context, in chan<- []*confgroup.Group) {
 		case <-tk.C:
 			w.refresh(ctx, in)
 		case event := <-w.watcher.Events:
-			if event.Name == "" || isChmod(event) {
+			if event.Name == "" || isChmod(event) || !w.fileMatches(event.Name) {
+				break
+			}
+			if isCreate(event) && w.cache.has(event.Name) {
 				break
 			}
 			if isRename(event) {
@@ -78,6 +82,15 @@ func (w *Watcher) Run(ctx context.Context, in chan<- []*confgroup.Group) {
 			}
 		}
 	}
+}
+
+func (w *Watcher) fileMatches(file string) bool {
+	for _, pattern := range w.paths {
+		if ok, _ := filepath.Match(pattern, file); ok {
+			return true
+		}
+	}
+	return false
 }
 
 func (w *Watcher) listFiles() (files []string) {
@@ -173,6 +186,10 @@ func isChmod(event fsnotify.Event) bool {
 
 func isRename(event fsnotify.Event) bool {
 	return event.Op&fsnotify.Rename == fsnotify.Rename
+}
+
+func isCreate(event fsnotify.Event) bool {
+	return event.Op&fsnotify.Create == fsnotify.Create
 }
 
 func sendGroups(ctx context.Context, in chan<- []*confgroup.Group, groups []*confgroup.Group) {

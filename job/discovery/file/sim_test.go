@@ -20,13 +20,8 @@ type (
 	discoverySim struct {
 		discovery      *Discovery
 		beforeRun      func()
-		afterRun       []simRunAction
+		afterRun       func()
 		expectedGroups []*confgroup.Group
-	}
-	simRunAction struct {
-		name   string
-		delay  time.Duration
-		action func()
 	}
 )
 
@@ -46,12 +41,10 @@ func (sim discoverySim) run(t *testing.T) {
 	go sim.discovery.Run(ctx, in)
 	time.Sleep(time.Millisecond * 250)
 
-	for _, after := range sim.afterRun {
-		time.Sleep(after.delay)
-		if after.action != nil {
-			after.action()
-		}
+	if sim.afterRun != nil {
+		sim.afterRun()
 	}
+
 	actual := <-out
 
 	sortGroups(actual)
@@ -108,6 +101,11 @@ func (d *tmpDir) createFile(pattern string) string {
 
 func (d *tmpDir) removeFile(filename string) {
 	err := os.Remove(filename)
+	require.NoError(d.t, err)
+}
+
+func (d *tmpDir) renameFile(origFilename, newFilename string) {
+	err := os.Rename(origFilename, newFilename)
 	require.NoError(d.t, err)
 }
 

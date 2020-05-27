@@ -103,14 +103,8 @@ func TestWatcher_Run(t *testing.T) {
 
 			sim := discoverySim{
 				discovery: discovery,
-				afterRun: []simRunAction{
-					{
-						name:  "add file",
-						delay: time.Millisecond * 100,
-						action: func() {
-							tmp.writeYAML(filename, cfg)
-						},
-					},
+				afterRun: func() {
+					tmp.writeYAML(filename, cfg)
 				},
 				expectedGroups: expected,
 			}
@@ -155,14 +149,8 @@ func TestWatcher_Run(t *testing.T) {
 				beforeRun: func() {
 					tmp.writeYAML(filename, cfg)
 				},
-				afterRun: []simRunAction{
-					{
-						name:  "remove file",
-						delay: time.Millisecond * 100,
-						action: func() {
-							tmp.removeFile(filename)
-						},
-					},
+				afterRun: func() {
+					tmp.removeFile(filename)
 				},
 				expectedGroups: expected,
 			}
@@ -221,14 +209,66 @@ func TestWatcher_Run(t *testing.T) {
 				beforeRun: func() {
 					tmp.writeYAML(filename, cfgOrig)
 				},
-				afterRun: []simRunAction{
-					{
-						name:  "overwrite file",
-						delay: time.Millisecond * 100,
-						action: func() {
-							tmp.writeYAML(filename, cfgChanged)
+				afterRun: func() {
+					tmp.writeYAML(filename, cfgChanged)
+				},
+				expectedGroups: expected,
+			}
+			return sim
+		},
+		"vim 'backupcopy=no' (writing to a file and backup)": func(tmp *tmpDir) discoverySim {
+			reg := confgroup.Registry{
+				"module": {},
+			}
+			cfg := sdConfig{
+				{
+					"name":   "name",
+					"module": "module",
+				},
+			}
+			filename := tmp.join("module.conf")
+			discovery := prepareDiscovery(t, Config{
+				Registry: reg,
+				Watch:    []string{tmp.join("*.conf")},
+			})
+			expected := []*confgroup.Group{
+				{
+					Source: filename,
+					Configs: []confgroup.Config{
+						{
+							"name":                "name",
+							"module":              "module",
+							"update_every":        module.UpdateEvery,
+							"autodetection_retry": module.AutoDetectionRetry,
+							"priority":            module.Priority,
 						},
 					},
+				},
+				{
+					Source: filename,
+					Configs: []confgroup.Config{
+						{
+							"name":                "name",
+							"module":              "module",
+							"update_every":        module.UpdateEvery,
+							"autodetection_retry": module.AutoDetectionRetry,
+							"priority":            module.Priority,
+						},
+					},
+				},
+			}
+
+			sim := discoverySim{
+				discovery: discovery,
+				beforeRun: func() {
+					tmp.writeYAML(filename, cfg)
+				},
+				afterRun: func() {
+					newFilename := filename + ".swp"
+					tmp.renameFile(filename, newFilename)
+					tmp.writeYAML(filename, cfg)
+					tmp.removeFile(newFilename)
+					time.Sleep(time.Millisecond * 500)
 				},
 				expectedGroups: expected,
 			}
