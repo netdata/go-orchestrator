@@ -10,12 +10,14 @@ import (
 	"github.com/netdata/go-orchestrator/job/confgroup"
 	"github.com/netdata/go-orchestrator/job/discovery/dummy"
 	"github.com/netdata/go-orchestrator/job/discovery/file"
+	"github.com/netdata/go-orchestrator/pkg/logger"
 )
 
 type Config struct {
-	Registry confgroup.Registry
-	File     file.Config
-	Dummy    dummy.Config
+	PluginName string
+	Registry   confgroup.Registry
+	File       file.Config
+	Dummy      dummy.Config
 }
 
 func validateConfig(cfg Config) error {
@@ -33,6 +35,7 @@ type (
 		Run(ctx context.Context, in chan<- []*confgroup.Group)
 	}
 	Manager struct {
+		*logger.Logger
 		discoverers []discoverer
 		send        chan struct{}
 		sendEvery   time.Duration

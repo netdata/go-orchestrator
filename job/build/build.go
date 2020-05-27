@@ -51,14 +51,14 @@ const (
 
 type (
 	Manager struct {
-		Runner    Runner
-		Saver     StateSaver
-		PrevState State
-
 		PluginName string
 		Out        io.Writer
 		Modules    module.Registry
 		*logger.Logger
+
+		Runner    Runner
+		Saver     StateSaver
+		PrevState State
 
 		grpCache   *groupCache
 		startCache *startedCache

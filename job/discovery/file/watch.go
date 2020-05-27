@@ -8,12 +8,14 @@ import (
 	"time"
 
 	"github.com/netdata/go-orchestrator/job/confgroup"
+	"github.com/netdata/go-orchestrator/pkg/logger"
 
 	"github.com/fsnotify/fsnotify"
 )
 
 type (
 	Watcher struct {
+		*logger.Logger
 		paths        []string
 		reg          confgroup.Registry
 		watcher      *fsnotify.Watcher
@@ -67,6 +69,7 @@ func (w *Watcher) Run(ctx context.Context, in chan<- []*confgroup.Group) {
 				break
 			}
 			if isCreate(event) && w.cache.has(event.Name) {
+				// vim "backupcopy=no" case, already collected after Rename event.
 				break
 			}
 			if isRename(event) {

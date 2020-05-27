@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/netdata/go-orchestrator/job/confgroup"
+	"github.com/netdata/go-orchestrator/pkg/logger"
 )
 
 type Config struct {
@@ -24,6 +25,7 @@ func validateConfig(cfg Config) error {
 }
 
 type Discovery struct {
+	*logger.Logger
 	reg   confgroup.Registry
 	names []string
 }

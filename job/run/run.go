@@ -6,11 +6,13 @@ import (
 	"time"
 
 	"github.com/netdata/go-orchestrator/job"
+	"github.com/netdata/go-orchestrator/pkg/logger"
 	"github.com/netdata/go-orchestrator/pkg/ticker"
 )
 
 type (
 	Manager struct {
+		*logger.Logger
 		mux   sync.Mutex
 		queue queue
 	}

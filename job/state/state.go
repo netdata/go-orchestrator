@@ -8,9 +8,11 @@ import (
 	"time"
 
 	"github.com/netdata/go-orchestrator/job/confgroup"
+	"github.com/netdata/go-orchestrator/pkg/logger"
 )
 
 type Manager struct {
+	*logger.Logger
 	path  string
 	state *State
 }

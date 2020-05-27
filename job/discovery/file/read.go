@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/netdata/go-orchestrator/job/confgroup"
+	"github.com/netdata/go-orchestrator/pkg/logger"
 )
 
 type format int
@@ -25,6 +26,7 @@ type (
 )
 
 type Reader struct {
+	*logger.Logger
 	reg   confgroup.Registry
 	paths []string
 }

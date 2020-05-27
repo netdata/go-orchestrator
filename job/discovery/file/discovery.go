@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/netdata/go-orchestrator/job/confgroup"
+	"github.com/netdata/go-orchestrator/pkg/logger"
 )
 
 type Config struct {
@@ -30,6 +31,7 @@ type (
 		Run(ctx context.Context, in chan<- []*confgroup.Group)
 	}
 	Discovery struct {
+		*logger.Logger
 		req         confgroup.Registry
 		discoverers []discoverer
 	}
