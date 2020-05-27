@@ -37,10 +37,10 @@ func (p *Plugin) loadPluginConfig() config {
 		return defaultConfig()
 	}
 
-	name := p.Name + ".conf"
-	p.Infof("looking for '%s' in %v", name, p.ConfDir)
+	cfgPath := p.Name + ".conf"
+	p.Infof("looking for '%s' in %v", cfgPath, p.ConfDir)
 
-	path, err := p.ConfDir.Find(name)
+	path, err := p.ConfDir.Find(cfgPath)
 	if err != nil || path == "" {
 		p.Warning("couldn't find config, will use defaults")
 		return defaultConfig()
@@ -100,14 +100,14 @@ func (p *Plugin) buildDiscoveryConf(enabled module.Registry) discovery.Config {
 			Dummy:    dummy.Config{Names: dummyPaths}}
 	}
 
-	for modName := range enabled {
-		name := modName + ".conf"
-		p.Infof("looking for '%s' in %v", name, p.ModulesConfDir)
+	for name := range enabled {
+		cfgPath := name + ".conf"
+		p.Infof("looking for '%s' in %v", cfgPath, p.ModulesConfDir)
 
-		path, err := p.ModulesConfDir.Find(name + ".conf")
+		path, err := p.ModulesConfDir.Find(cfgPath)
 		if err != nil {
-			p.Infof("couldn't find '%s' config, will use default config", modName)
-			dummyPaths = append(dummyPaths, modName)
+			p.Infof("couldn't find '%s' module config, will use default config", name)
+			dummyPaths = append(dummyPaths, name)
 		} else {
 			p.Infof("found '%s", path)
 			readPaths = append(readPaths, path)
