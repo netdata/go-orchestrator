@@ -31,7 +31,6 @@ type (
 		Run(ctx context.Context, in chan<- []*confgroup.Group)
 	}
 	Discovery struct {
-		req         confgroup.Registry
 		discoverers []discoverer
 		*logger.Logger
 	}

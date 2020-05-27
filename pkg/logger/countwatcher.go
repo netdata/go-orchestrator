@@ -47,9 +47,7 @@ func (m *MsgCountWatcher) Unregister(logger *Logger) {
 	m.mux.Lock()
 	defer m.mux.Unlock()
 
-	if _, ok := m.items[logger.id]; ok {
-		delete(m.items, logger.id)
-	}
+	delete(m.items, logger.id)
 }
 
 func (m *MsgCountWatcher) start() {

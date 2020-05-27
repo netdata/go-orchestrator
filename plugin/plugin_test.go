@@ -18,14 +18,14 @@ func TestNew(t *testing.T) {
 
 func TestPlugin_Run(t *testing.T) {
 	p := New(Config{
-		Name:               "",
-		ConfPath:           nil,
-		ModulesConfPath:    nil,
-		ModulesSDConfFiles: nil,
-		StateFile:          "",
-		ModuleRegistry:     nil,
-		RunModule:          "",
-		MinUpdateEvery:     0,
+		Name:              "",
+		ConfDir:           nil,
+		ModulesConfDir:    nil,
+		ModulesSDConfPath: nil,
+		StateFile:         "",
+		ModuleRegistry:    nil,
+		RunModule:         "",
+		MinUpdateEvery:    0,
 	})
 
 	var buf bytes.Buffer

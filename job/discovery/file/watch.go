@@ -123,7 +123,7 @@ func (w *Watcher) refresh(ctx context.Context, in chan<- []*confgroup.Group) {
 	for _, file := range w.listFiles() {
 		fi, err := os.Lstat(file)
 		if err != nil {
-			w.Warningf("lstat '%s': %v", err)
+			w.Warningf("lstat '%s': %v", file, err)
 			continue
 		}
 
@@ -139,7 +139,7 @@ func (w *Watcher) refresh(ctx context.Context, in chan<- []*confgroup.Group) {
 
 		group, err := parse(w.reg, file)
 		if err != nil {
-			w.Warningf("parse '%s': %v", err)
+			w.Warningf("parse '%s': %v", file, err)
 			continue
 		}
 		added = append(added, group)

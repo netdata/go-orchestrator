@@ -22,20 +22,18 @@ import (
 	"github.com/mattn/go-isatty"
 )
 
-//var log = logger.New("plugin", "main", "main")
-
 var isTerminal = isatty.IsTerminal(os.Stdout.Fd())
 
 // Config is Plugin configuration.
 type Config struct {
-	Name               string
-	ConfPath           []string
-	ModulesConfPath    []string
-	ModulesSDConfFiles []string
-	StateFile          string
-	ModuleRegistry     module.Registry
-	RunModule          string
-	MinUpdateEvery     int
+	Name              string
+	ConfDir           []string
+	ModulesConfDir    []string
+	ModulesSDConfPath []string
+	StateFile         string
+	ModuleRegistry    module.Registry
+	RunModule         string
+	MinUpdateEvery    int
 }
 
 // Plugin represents orchestrator.
@@ -57,9 +55,9 @@ type Plugin struct {
 func New(cfg Config) *Plugin {
 	p := &Plugin{
 		Name:              cfg.Name,
-		ConfDir:           cfg.ConfPath,
-		ModulesConfDir:    cfg.ModulesConfPath,
-		ModulesSDConfPath: cfg.ModulesSDConfFiles,
+		ConfDir:           cfg.ConfDir,
+		ModulesConfDir:    cfg.ModulesConfDir,
+		ModulesSDConfPath: cfg.ModulesSDConfPath,
 		RunModule:         cfg.RunModule,
 		MinUpdateEvery:    cfg.MinUpdateEvery,
 		ModuleRegistry:    module.DefaultRegistry,
@@ -83,21 +81,19 @@ func (p *Plugin) Run() {
 func serve(p *Plugin) {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGHUP)
-	handleReload(ch, p)
-}
-
-func handleReload(ch chan os.Signal, p *Plugin) {
-	ctx, cancel := context.WithCancel(context.Background())
 	var wg sync.WaitGroup
 
-	wg.Add(1)
-	go func() { defer wg.Done(); p.run(ctx) }()
+	for {
+		ctx, cancel := context.WithCancel(context.Background())
 
-	sig := <-ch
-	p.Infof("received %s signal (%d), stopping running instance", sig, sig)
-	cancel()
-	wg.Wait()
-	handleReload(ch, p)
+		wg.Add(1)
+		go func() { defer wg.Done(); p.run(ctx) }()
+
+		sig := <-ch
+		p.Infof("received %s signal (%d), stopping running instance", sig, sig)
+		cancel()
+		wg.Wait()
+	}
 }
 
 func (p *Plugin) run(ctx context.Context) {
@@ -194,7 +190,11 @@ func (p *Plugin) keepAlive() {
 	if isTerminal {
 		return
 	}
-	for range time.Tick(time.Second) {
+
+	tk := time.NewTimer(time.Second)
+	defer tk.Stop()
+
+	for range tk.C {
 		_ = p.api.EMPTYLINE()
 	}
 }

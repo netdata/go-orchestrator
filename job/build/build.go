@@ -190,12 +190,13 @@ func (m *Manager) handleAddCfg(ctx context.Context, cfg confgroup.Config) {
 
 	job, err := m.buildJob(cfg)
 	if err != nil {
-		m.Warningf("build job module '%s' name '%s'", cfg.Module(), cfg.Name())
+		m.Warningf("couldn't build job: %v", err)
 		m.Saver.Save(cfg, buildError)
 		return
 	}
 
 	if !isRetry && m.PrevState.Contains(cfg, success, retry) {
+		// TODO: method?
 		// 5 minutes
 		job.AutoDetectEvery = 30
 		job.AutoDetectTries = 11
@@ -214,7 +215,7 @@ func (m *Manager) handleAddCfg(ctx context.Context, cfg confgroup.Config) {
 	case failed:
 		m.Saver.Save(cfg, failed)
 	default:
-		m.Warningf("unknown detection state: state '%s', module '%s' job '%s' (%s)", v, cfg.Module(), cfg.Name())
+		m.Warningf("unknown detection state: '%s', module '%s' job '%s'", v, cfg.Module(), cfg.Name())
 	}
 }
 
@@ -235,7 +236,7 @@ func (m *Manager) handleRemoveCfg(cfg confgroup.Config) {
 func (m *Manager) buildJob(cfg confgroup.Config) (*module.Job, error) {
 	creator, ok := m.Modules[cfg.Module()]
 	if !ok {
-		return nil, fmt.Errorf("couldn't find '%s' module", cfg.Module())
+		return nil, fmt.Errorf("couldn't find '%s' module, job '%s'", cfg.Module(), cfg.Name())
 	}
 
 	mod := creator.Create()

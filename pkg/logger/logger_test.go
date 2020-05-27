@@ -22,12 +22,12 @@ func TestNew(t *testing.T) {
 	assert.IsType(
 		t,
 		(*Logger)(nil),
-		New("", "", ""),
+		New("", ""),
 	)
 }
 
 func TestNewLimited(t *testing.T) {
-	logger := NewLimited("", "", "")
+	logger := NewLimited("", "")
 	assert.True(t, logger.limited)
 
 	_, ok := GlobalMsgCountWatcher.items[logger.id]
@@ -37,7 +37,7 @@ func TestNewLimited(t *testing.T) {
 
 func TestLogger_Critical(t *testing.T) {
 	buf := bytes.Buffer{}
-	logger := New("", "", "")
+	logger := New("", "")
 	logger.formatter.SetOutput(&buf)
 	logger.formatter.flag = log.Lshortfile
 	logger.Critical()
@@ -47,7 +47,7 @@ func TestLogger_Critical(t *testing.T) {
 
 func TestLogger_Criticalf(t *testing.T) {
 	buf := bytes.Buffer{}
-	logger := New("", "", "")
+	logger := New("", "")
 	logger.formatter.SetOutput(&buf)
 	logger.formatter.flag = log.Lshortfile
 	logger.Criticalf("")
@@ -57,7 +57,7 @@ func TestLogger_Criticalf(t *testing.T) {
 
 func TestLogger_Error(t *testing.T) {
 	buf := bytes.Buffer{}
-	logger := New("", "", "")
+	logger := New("", "")
 	logger.formatter.SetOutput(&buf)
 
 	logger.Error()
@@ -66,7 +66,7 @@ func TestLogger_Error(t *testing.T) {
 
 func TestLogger_Errorf(t *testing.T) {
 	buf := bytes.Buffer{}
-	logger := New("", "", "")
+	logger := New("", "")
 	logger.formatter.SetOutput(&buf)
 
 	logger.Errorf("")
@@ -75,7 +75,7 @@ func TestLogger_Errorf(t *testing.T) {
 
 func TestLogger_Warning(t *testing.T) {
 	buf := bytes.Buffer{}
-	logger := New("", "", "")
+	logger := New("", "")
 	logger.formatter.SetOutput(&buf)
 
 	logger.Warning()
@@ -84,7 +84,7 @@ func TestLogger_Warning(t *testing.T) {
 
 func TestLogger_Warningf(t *testing.T) {
 	buf := bytes.Buffer{}
-	logger := New("", "", "")
+	logger := New("", "")
 	logger.formatter.SetOutput(&buf)
 
 	logger.Warningf("")
@@ -93,7 +93,7 @@ func TestLogger_Warningf(t *testing.T) {
 
 func TestLogger_Info(t *testing.T) {
 	buf := bytes.Buffer{}
-	logger := New("", "", "")
+	logger := New("", "")
 	logger.formatter.SetOutput(&buf)
 
 	logger.Info()
@@ -102,7 +102,7 @@ func TestLogger_Info(t *testing.T) {
 
 func TestLogger_Infof(t *testing.T) {
 	buf := bytes.Buffer{}
-	logger := New("", "", "")
+	logger := New("", "")
 	logger.formatter.SetOutput(&buf)
 
 	logger.Infof("")
@@ -111,7 +111,7 @@ func TestLogger_Infof(t *testing.T) {
 
 func TestLogger_Debug(t *testing.T) {
 	buf := bytes.Buffer{}
-	logger := New("", "", "")
+	logger := New("", "")
 	logger.formatter.SetOutput(&buf)
 
 	logger.Debug()
@@ -120,7 +120,7 @@ func TestLogger_Debug(t *testing.T) {
 
 func TestLogger_Debugf(t *testing.T) {
 	buf := bytes.Buffer{}
-	logger := New("", "", "")
+	logger := New("", "")
 	logger.formatter.SetOutput(&buf)
 
 	logger.Debugf("")
@@ -144,7 +144,7 @@ func TestLogger_NotInitializedPtr(t *testing.T) {
 }
 
 func TestLogger_Unlimited(t *testing.T) {
-	logger := New("", "", "")
+	logger := New("", "")
 
 	wr := countWriter(0)
 	logger.formatter.SetOutput(&wr)
@@ -161,7 +161,7 @@ func TestLogger_Unlimited(t *testing.T) {
 func TestLogger_Limited(t *testing.T) {
 	SetSeverity(INFO)
 
-	logger := New("", "", "")
+	logger := New("", "")
 	logger.limited = true
 
 	wr := countWriter(0)
@@ -177,7 +177,7 @@ func TestLogger_Limited(t *testing.T) {
 }
 
 func TestLogger_Info_race(t *testing.T) {
-	logger := New("", "", "")
+	logger := New("", "")
 	logger.formatter.SetOutput(ioutil.Discard)
 	for i := 0; i < 10; i++ {
 		go func() {
@@ -197,7 +197,7 @@ func (c *countWriter) Write(b []byte) (n int, err error) {
 }
 
 func BenchmarkLogger_Infof(b *testing.B) {
-	l := New("test", "test", "test")
+	l := New("test", "test")
 	l.formatter.SetOutput(ioutil.Discard)
 	for i := 0; i < b.N; i++ {
 		l.Infof("hello %s", "world")

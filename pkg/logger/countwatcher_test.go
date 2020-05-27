@@ -16,7 +16,7 @@ func TestMsgCountWatcher_Register(t *testing.T) {
 
 	require.Len(t, cw.items, 0)
 
-	logger := New("", "", "")
+	logger := New("", "")
 	cw.Register(logger)
 
 	require.Len(t, cw.items, 1)
@@ -30,7 +30,7 @@ func TestMsgCountWatcher_Unregister(t *testing.T) {
 
 	require.Len(t, cw.items, 0)
 
-	logger := New("", "", "")
+	logger := New("", "")
 	cw.items[logger.id] = logger
 	cw.Unregister(logger)
 
@@ -42,7 +42,7 @@ func TestMsgCountWatcher(t *testing.T) {
 	cw := newMsgCountWatcher(reset)
 	defer cw.stop()
 
-	logger := New("", "", "")
+	logger := New("", "")
 	logger.limited = true
 	logger.formatter.SetOutput(ioutil.Discard)
 	cw.Register(logger)

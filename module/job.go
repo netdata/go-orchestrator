@@ -192,7 +192,9 @@ func (j *Job) disableAutoDetection() {
 }
 
 func (j *Job) cleanup() {
-	logger.GlobalMsgCountWatcher.Unregister(j.Logger)
+	if j.Logger != nil {
+		logger.GlobalMsgCountWatcher.Unregister(j.Logger)
+	}
 	j.buf.Reset()
 
 	if j.runChart.created {
@@ -280,7 +282,7 @@ func (j *Job) processMetrics(metrics map[string]int64, startTime time.Time, sinc
 		j.createChart(j.runChart)
 	}
 
-	elapsed := int64(durationTo(time.Now().Sub(startTime), time.Millisecond))
+	elapsed := int64(durationTo(time.Since(startTime), time.Millisecond))
 
 	var i, updated int
 	for _, chart := range *j.charts {

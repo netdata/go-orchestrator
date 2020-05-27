@@ -68,7 +68,7 @@ func (r Reader) groups() (groups []*confgroup.Group) {
 
 			group, err := parse(r.reg, path)
 			if err != nil {
-				r.Warningf("parse '%s': %v", err)
+				r.Warningf("parse '%s': %v", path, err)
 				continue
 			}
 			groups = append(groups, group)
