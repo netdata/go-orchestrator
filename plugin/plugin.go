@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"os/signal"
@@ -23,7 +22,7 @@ import (
 	"github.com/mattn/go-isatty"
 )
 
-var log = logger.New("plugin", "main", "main")
+//var log = logger.New("plugin", "main", "main")
 
 var isTerminal = isatty.IsTerminal(os.Stdout.Fd())
 
@@ -41,36 +40,39 @@ type Config struct {
 
 // Plugin represents orchestrator.
 type Plugin struct {
-	Name               string
-	ConfPath           multipath.MultiPath
-	ModulesConfPath    multipath.MultiPath
-	ModulesSDConfFiles []string
-	StateFile          string
-	RunModule          string
-	MinUpdateEvery     int
-	ModuleRegistry     module.Registry
-	Out                io.Writer
+	Name              string
+	ConfDir           multipath.MultiPath
+	ModulesConfDir    multipath.MultiPath
+	ModulesSDConfPath []string
+	StateFile         string
+	RunModule         string
+	MinUpdateEvery    int
+	ModuleRegistry    module.Registry
+	Out               io.Writer
 	*logger.Logger
 }
 
 // New creates Plugin.
 func New(cfg Config) *Plugin {
-	return &Plugin{
-		Name:               cfg.Name,
-		ConfPath:           cfg.ConfPath,
-		ModulesConfPath:    cfg.ModulesConfPath,
-		ModulesSDConfFiles: cfg.ModulesSDConfFiles,
-		RunModule:          cfg.RunModule,
-		MinUpdateEvery:     cfg.MinUpdateEvery,
-		ModuleRegistry:     module.DefaultRegistry,
-		Out:                os.Stdout,
+	p := &Plugin{
+		Name:              cfg.Name,
+		ConfDir:           cfg.ConfPath,
+		ModulesConfDir:    cfg.ModulesConfPath,
+		ModulesSDConfPath: cfg.ModulesSDConfFiles,
+		RunModule:         cfg.RunModule,
+		MinUpdateEvery:    cfg.MinUpdateEvery,
+		ModuleRegistry:    module.DefaultRegistry,
+		Out:               os.Stdout,
 	}
+	p.Logger = logger.New(p.Name, "main", "main")
+	return p
 }
 
 // Run
 func (p *Plugin) Run() {
-	go signalHandling()
-	go keepAlive()
+	p.Info("starting...")
+	go p.signalHandling()
+	go p.keepAlive()
 	serve(p)
 }
 
@@ -96,7 +98,7 @@ func handleReload(ch chan os.Signal, p *Plugin) {
 func (p *Plugin) run(ctx context.Context) {
 	cfg := p.loadPluginConfig()
 	if !cfg.Enabled {
-		log.Info("plugin is disabled in the configuration file, exiting...")
+		p.Info("plugin is disabled in the configuration file, exiting...")
 		if !isTerminal {
 			p.disable()
 		}
@@ -105,7 +107,7 @@ func (p *Plugin) run(ctx context.Context) {
 
 	enabled := p.loadEnabledModules(cfg)
 	if len(enabled) == 0 {
-		log.Info("no modules to run")
+		p.Info("no modules to run")
 		if isTerminal {
 			os.Exit(0)
 		}
@@ -166,12 +168,12 @@ func (p *Plugin) disable() {
 	_ = netdataapi.New(p.Out).DISABLE()
 }
 
-func signalHandling() {
+func (p *Plugin) signalHandling() {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM, syscall.SIGPIPE)
 
 	sig := <-ch
-	log.Infof("received %s signal (%d). Terminating...", sig, sig)
+	p.Infof("received %s signal (%d). Terminating...", sig, sig)
 
 	switch sig {
 	case syscall.SIGPIPE:
@@ -181,11 +183,12 @@ func signalHandling() {
 	}
 }
 
-func keepAlive() {
+func (p *Plugin) keepAlive() {
 	if isTerminal {
 		return
 	}
+	api := netdataapi.New(p.Out)
 	for range time.Tick(time.Second) {
-		_, _ = fmt.Fprint(os.Stdout, "\n")
+		_ = api.EMPTYLINE()
 	}
 }

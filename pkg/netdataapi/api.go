@@ -93,3 +93,9 @@ func (a *API) DISABLE() error {
 	_, err := fmt.Fprintf(a, "DISABLE\n")
 	return err
 }
+
+// EMPTYLINE write an empty line.
+func (a *API) EMPTYLINE() error {
+	_, err := fmt.Fprintf(a, "\n")
+	return err
+}

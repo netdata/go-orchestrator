@@ -9,7 +9,6 @@ import (
 	"github.com/netdata/go-orchestrator/job/discovery/dummy"
 	"github.com/netdata/go-orchestrator/job/discovery/file"
 	"github.com/netdata/go-orchestrator/module"
-	"github.com/netdata/go-orchestrator/pkg/multipath"
 
 	"gopkg.in/yaml.v2"
 )
@@ -31,26 +30,29 @@ type config struct {
 }
 
 func (p *Plugin) loadPluginConfig() config {
-	if len(p.ConfPath) == 0 {
-		log.Info("plugin config path not provided, will use defaults")
+	p.Info("loading config")
+
+	if len(p.ConfDir) == 0 {
+		p.Info("config dir provided, will use defaults")
 		return defaultConfig()
 	}
 
 	name := p.Name + ".conf"
-	log.Infof("looking for '%s' in %s", name, p.ConfPath)
+	p.Infof("looking for '%s' in %v", name, p.ConfDir)
 
-	path, err := p.ConfPath.Find(name)
+	path, err := p.ConfDir.Find(name)
 	if err != nil || path == "" {
-		log.Warning("couldn't find plugin config, will use defaults")
+		p.Warning("couldn't find config, will use defaults")
 		return defaultConfig()
 	}
-	log.Infof("found '%s", path)
+	p.Infof("found '%s", path)
 
 	cfg := defaultConfig()
 	if err := loadYAML(&cfg, path); err != nil {
-		log.Warningf("couldn't load '%s': %v, will use defaults", path, err)
+		p.Warningf("couldn't load config '%s': %v, will use defaults", path, err)
 		return defaultConfig()
 	}
+	p.Info("config successfully loaded")
 	return cfg
 }
 
@@ -63,11 +65,11 @@ func (p *Plugin) loadEnabledModules(cfg config) module.Registry {
 			continue
 		}
 		if all && creator.Disabled && !cfg.isExplicitlyEnabled(name) {
-			log.Infof("module '%s' disabled by default", name)
+			p.Infof("module '%s' disabled by default, should be explicitly enabled in the config", name)
 			continue
 		}
 		if all && !cfg.isImplicitlyEnabled(name) {
-			log.Infof("module '%s' disabled in configuration file", name)
+			p.Infof("module '%s' disabled in the config file", name)
 			continue
 		}
 		enabled[name] = creator
@@ -76,9 +78,7 @@ func (p *Plugin) loadEnabledModules(cfg config) module.Registry {
 }
 
 func (p *Plugin) buildDiscoveryConf(enabled module.Registry) discovery.Config {
-	var paths, dummyNames []string
 	reg := confgroup.Registry{}
-
 	for name, creator := range enabled {
 		reg.Register(name, confgroup.Default{
 			MinUpdateEvery:     p.MinUpdateEvery,
@@ -88,32 +88,40 @@ func (p *Plugin) buildDiscoveryConf(enabled module.Registry) discovery.Config {
 		})
 	}
 
-	if len(p.ModulesConfPath) == 0 {
-		for name := range enabled {
-			dummyNames = append(dummyNames, name)
-		}
-	} else {
-		for name := range enabled {
-			path, err := p.ModulesConfPath.Find(name + ".conf")
-			if err != nil && !multipath.IsNotFound(err) {
-				continue
-			}
+	var readPaths, dummyPaths []string
 
-			if err != nil {
-				dummyNames = append(dummyNames, name)
-			} else {
-				paths = append(paths, path)
-			}
+	if len(p.ModulesConfDir) == 0 {
+		p.Info("modules conf dir not provided, will use default config for enabled modules")
+		for name := range enabled {
+			dummyPaths = append(dummyPaths, name)
+		}
+		return discovery.Config{
+			Registry: reg,
+			Dummy:    dummy.Config{Names: dummyPaths}}
+	}
+
+	for modName := range enabled {
+		name := modName + ".conf"
+		p.Infof("looking for '%s' in %v", name, p.ModulesConfDir)
+
+		path, err := p.ModulesConfDir.Find(name + ".conf")
+		if err != nil {
+			p.Infof("couldn't find '%s' config, will use default config", modName)
+			dummyPaths = append(dummyPaths, modName)
+		} else {
+			p.Infof("found '%s", path)
+			readPaths = append(readPaths, path)
 		}
 	}
+
 	return discovery.Config{
 		Registry: reg,
 		File: file.Config{
-			Read:  paths,
-			Watch: p.ModulesSDConfFiles,
+			Read:  readPaths,
+			Watch: p.ModulesSDConfPath,
 		},
 		Dummy: dummy.Config{
-			Names: dummyNames,
+			Names: dummyPaths,
 		},
 	}
 }

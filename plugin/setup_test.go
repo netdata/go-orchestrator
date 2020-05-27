@@ -56,8 +56,8 @@ func TestPlugin_loadConfig(t *testing.T) {
 	}{
 		"valid config file": {
 			plugin: Plugin{
-				Name:     "plugin-valid",
-				ConfPath: []string{"testdata"},
+				Name:    "plugin-valid",
+				ConfDir: []string{"testdata"},
 			},
 			wantCfg: config{
 				Enabled:    true,
@@ -75,22 +75,22 @@ func TestPlugin_loadConfig(t *testing.T) {
 		},
 		"config file not found": {
 			plugin: Plugin{
-				Name:     "plugin",
-				ConfPath: []string{"testdata/not-exist"},
+				Name:    "plugin",
+				ConfDir: []string{"testdata/not-exist"},
 			},
 			wantCfg: defaultConfig(),
 		},
 		"empty config file": {
 			plugin: Plugin{
-				Name:     "plugin-empty",
-				ConfPath: []string{"testdata"},
+				Name:    "plugin-empty",
+				ConfDir: []string{"testdata"},
 			},
 			wantCfg: defaultConfig(),
 		},
 		"invalid syntax config file": {
 			plugin: Plugin{
-				Name:     "plugin-invalid-syntax",
-				ConfPath: []string{"testdata"},
+				Name:    "plugin-invalid-syntax",
+				ConfDir: []string{"testdata"},
 			},
 			wantCfg: defaultConfig(),
 		},
@@ -201,6 +201,7 @@ func TestPlugin_loadEnabledModules(t *testing.T) {
 	}
 }
 
+// TODO: tech debt
 func TestPlugin_buildDiscoveryConf(t *testing.T) {
 
 }
