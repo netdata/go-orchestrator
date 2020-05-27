@@ -21,7 +21,8 @@ type (
 
 func NewManager() *Manager {
 	return &Manager{
-		mux: sync.Mutex{},
+		mux:    sync.Mutex{},
+		Logger: logger.NewNamed("run", "manager"),
 	}
 }
 

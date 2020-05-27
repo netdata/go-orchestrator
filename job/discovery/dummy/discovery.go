@@ -35,8 +35,9 @@ func NewDiscovery(cfg Config) (*Discovery, error) {
 		return nil, fmt.Errorf("config validation: %v", err)
 	}
 	d := &Discovery{
-		reg:   cfg.Registry,
-		names: cfg.Names,
+		reg:    cfg.Registry,
+		names:  cfg.Names,
+		Logger: logger.NewNamed("discovery", "dummy"),
 	}
 	return d, nil
 }

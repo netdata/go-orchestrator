@@ -50,7 +50,7 @@ func NewManager(cfg Config) (*Manager, error) {
 	}
 	mgr := &Manager{
 		send:        make(chan struct{}, 1),
-		sendEvery:   time.Second * 5, // some timeout is needed to aggregate all changes
+		sendEvery:   time.Second * 2, // some timeout to aggregate changes
 		discoverers: make([]discoverer, 0),
 		mux:         &sync.RWMutex{},
 		cache:       newCache(),
@@ -58,6 +58,7 @@ func NewManager(cfg Config) (*Manager, error) {
 	if err := mgr.registerDiscoverers(cfg); err != nil {
 		return nil, fmt.Errorf("discovery manager initializaion: %v", err)
 	}
+	mgr.Logger = logger.New(cfg.PluginName, "discovery", "manager")
 	return mgr, nil
 }
 

@@ -25,6 +25,7 @@ var (
 			return isatty.IsTerminal(os.Stderr.Fd())
 		}
 	}()
+	PluginName = "plugin"
 )
 
 // Logger represents a logger object
@@ -47,6 +48,11 @@ func New(pluginName, modName, jobName string) *Logger {
 		jobName:   jobName,
 		id:        createUniqueID(),
 	}
+}
+
+// NewNamed returns a new logger that uses PluginName variable as plugin name.
+func NewNamed(modName, jobName string) *Logger {
+	return New(PluginName, modName, jobName)
 }
 
 // NewLimited creates a new limited logger

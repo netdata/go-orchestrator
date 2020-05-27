@@ -51,9 +51,8 @@ const (
 
 type (
 	Manager struct {
-		PluginName string
-		Out        io.Writer
-		Modules    module.Registry
+		Out     io.Writer
+		Modules module.Registry
 		*logger.Logger
 
 		Runner    Runner
@@ -75,6 +74,7 @@ func NewManager() *Manager {
 		Saver:      dummySaver{},
 		PrevState:  dummyState{},
 		Out:        ioutil.Discard,
+		Logger:     logger.NewNamed("build", "manager"),
 		grpCache:   newGroupCache(),
 		startCache: newStartedCache(),
 		retryCache: newRetryCache(),

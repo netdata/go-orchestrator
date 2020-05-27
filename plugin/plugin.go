@@ -52,7 +52,7 @@ type Plugin struct {
 	*logger.Logger
 }
 
-// New creates Plugin.
+// New creates a new Plugin.
 func New(cfg Config) *Plugin {
 	p := &Plugin{
 		Name:              cfg.Name,
@@ -64,7 +64,10 @@ func New(cfg Config) *Plugin {
 		ModuleRegistry:    module.DefaultRegistry,
 		Out:               os.Stdout,
 	}
-	p.Logger = logger.New(p.Name, "main", "main")
+
+	logger.PluginName = p.Name
+	p.Logger = logger.NewNamed("main", "main")
+
 	return p
 }
 
@@ -130,7 +133,6 @@ func (p *Plugin) run(ctx context.Context) {
 	builder.Runner = runner
 	builder.Modules = enabled
 	builder.Out = p.Out
-	builder.PluginName = p.Name
 
 	var saver *state.Manager
 	if !isTerminal && p.StateFile != "" {

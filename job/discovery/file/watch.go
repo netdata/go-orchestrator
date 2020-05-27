@@ -37,6 +37,7 @@ func NewWatcher(reg confgroup.Registry, paths []string) *Watcher {
 		watcher:      nil,
 		cache:        make(cache),
 		refreshEvery: time.Minute,
+		Logger:       logger.NewNamed("discovery", "file watcher"),
 	}
 	return d
 }

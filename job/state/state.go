@@ -19,8 +19,9 @@ type Manager struct {
 
 func NewManager(path string) *Manager {
 	return &Manager{
-		state: &State{mux: new(sync.Mutex)},
-		path:  path,
+		state:  &State{mux: new(sync.Mutex)},
+		path:   path,
+		Logger: logger.NewNamed("state save", "manager"),
 	}
 }
 

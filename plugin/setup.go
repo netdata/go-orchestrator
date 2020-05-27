@@ -96,8 +96,9 @@ func (p *Plugin) buildDiscoveryConf(enabled module.Registry) discovery.Config {
 			dummyPaths = append(dummyPaths, name)
 		}
 		return discovery.Config{
-			Registry: reg,
-			Dummy:    dummy.Config{Names: dummyPaths}}
+			PluginName: p.Name,
+			Registry:   reg,
+			Dummy:      dummy.Config{Names: dummyPaths}}
 	}
 
 	for name := range enabled {
@@ -115,7 +116,8 @@ func (p *Plugin) buildDiscoveryConf(enabled module.Registry) discovery.Config {
 	}
 
 	return discovery.Config{
-		Registry: reg,
+		PluginName: p.Name,
+		Registry:   reg,
 		File: file.Config{
 			Read:  readPaths,
 			Watch: p.ModulesSDConfPath,
