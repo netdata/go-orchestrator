@@ -1,8 +1,9 @@
 package confgroup
 
 import (
-	"github.com/netdata/go-orchestrator/module"
 	"testing"
+
+	"github.com/netdata/go-orchestrator/module"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -208,7 +209,7 @@ func TestConfig_Apply(t *testing.T) {
 				"priority":            module.Priority,
 			},
 		},
-		"set name as module name if name not set": {
+		"set name to module name if name not set": {
 			def: Default{},
 			origCfg: Config{
 				"module": "module",
