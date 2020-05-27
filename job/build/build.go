@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"sync"
 	"time"
 
@@ -73,6 +74,7 @@ func NewManager() *Manager {
 	mgr := &Manager{
 		Saver:      dummySaver{},
 		PrevState:  dummyState{},
+		Out:        ioutil.Discard,
 		grpCache:   newGroupCache(),
 		startCache: newStartedCache(),
 		retryCache: newRetryCache(),
