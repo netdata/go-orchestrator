@@ -3,7 +3,6 @@ package module
 import (
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"unicode"
 )
@@ -11,7 +10,6 @@ import (
 type (
 	chartType string
 	dimAlgo   string
-	dimDivMul int
 )
 
 const (
@@ -49,13 +47,6 @@ func (c chartType) String() string {
 	switch c {
 	case Line, Area, Stacked:
 		return string(c)
-	}
-	return ""
-}
-
-func (d dimDivMul) String() string {
-	if d != 0 {
-		return strconv.Itoa(int(d))
 	}
 	return ""
 }
@@ -115,8 +106,8 @@ type (
 		ID   string
 		Name string
 		Algo dimAlgo
-		Mul  dimDivMul
-		Div  dimDivMul
+		Mul  int
+		Div  int
 		DimOpts
 
 		remove bool
@@ -136,41 +127,45 @@ type (
 )
 
 func (o Opts) String() string {
-	var opts []string
-
+	var b strings.Builder
 	if o.Detail {
-		opts = append(opts, "detail")
+		b.WriteString(" detail")
 	}
 	if o.Hidden {
-		opts = append(opts, "hidden")
+		b.WriteString(" hidden")
 	}
 	if o.Obsolete {
-		opts = append(opts, "obsolete")
+		b.WriteString(" obsolete")
 	}
 	if o.StoreFirst {
-		opts = append(opts, "store_first")
+		b.WriteString(" store_first")
 	}
 
-	return strings.Join(opts, " ")
+	if len(b.String()) == 0 {
+		return ""
+	}
+	return b.String()[1:]
 }
 
 func (o DimOpts) String() string {
-	var opts []string
-
+	var b strings.Builder
 	if o.Hidden {
-		opts = append(opts, "hidden")
+		b.WriteString(" hidden")
 	}
 	if o.NoOverflow {
-		opts = append(opts, "nooverflow")
+		b.WriteString(" nooverflow")
 	}
 	if o.NoReset {
-		opts = append(opts, "noreset")
+		b.WriteString(" noreset")
 	}
 	if o.Obsolete {
-		opts = append(opts, "obsolete")
+		b.WriteString(" obsolete")
 	}
 
-	return strings.Join(opts, " ")
+	if len(b.String()) == 0 {
+		return ""
+	}
+	return b.String()[1:]
 }
 
 // Add adds (appends) a variable number of Charts.

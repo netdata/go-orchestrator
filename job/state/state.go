@@ -25,35 +25,40 @@ func NewManager(path string) *Manager {
 	}
 }
 
-func (w *Manager) Run(ctx context.Context) {
+func (m *Manager) Run(ctx context.Context) {
+	m.Info("instance is started")
+	defer func() { m.Info("instance is stopped") }()
+
 	tk := time.NewTicker(time.Second * 10)
 	defer tk.Stop()
-	defer w.save()
+	defer m.save()
 
+LOOP:
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			break LOOP
 		case <-tk.C:
-			w.save()
+			m.save()
 		}
 	}
+	m.Info("exiting...")
 }
 
-func (w *Manager) Save(cfg confgroup.Config, state string) {
-	w.state.add(cfg, state)
+func (m *Manager) Save(cfg confgroup.Config, state string) {
+	m.state.add(cfg, state)
 }
 
-func (w *Manager) Remove(cfg confgroup.Config) {
-	w.state.remove(cfg)
+func (m *Manager) Remove(cfg confgroup.Config) {
+	m.state.remove(cfg)
 }
 
-func (w *Manager) save() {
-	bs, err := w.state.bytes()
+func (m *Manager) save() {
+	bs, err := m.state.bytes()
 	if err != nil {
 		return
 	}
-	f, err := os.Create(w.path)
+	f, err := os.Create(m.path)
 	if err != nil {
 		return
 	}

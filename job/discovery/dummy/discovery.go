@@ -47,6 +47,9 @@ func (d Discovery) String() string {
 }
 
 func (d Discovery) Run(ctx context.Context, in chan<- []*confgroup.Group) {
+	d.Info("instance is started")
+	defer func() { d.Info("instance is stopped") }()
+
 	select {
 	case <-ctx.Done():
 	case in <- d.groups():

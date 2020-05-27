@@ -51,8 +51,9 @@ const (
 
 type (
 	Manager struct {
-		Out     io.Writer
-		Modules module.Registry
+		PluginName string
+		Out        io.Writer
+		Modules    module.Registry
 		*logger.Logger
 
 		Runner    Runner
@@ -86,6 +87,9 @@ func NewManager() *Manager {
 }
 
 func (m *Manager) Run(ctx context.Context, in chan []*confgroup.Group) {
+	m.Info("instance is started")
+	defer func() { m.Info("instance is stopped") }()
+
 	var wg sync.WaitGroup
 
 	wg.Add(1)
@@ -96,6 +100,7 @@ func (m *Manager) Run(ctx context.Context, in chan []*confgroup.Group) {
 
 	wg.Wait()
 	<-ctx.Done()
+	m.Info("exiting...")
 }
 
 func (m *Manager) runProcessing(ctx context.Context, in <-chan []*confgroup.Group) {

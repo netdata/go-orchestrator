@@ -44,6 +44,9 @@ func (r Reader) String() string {
 }
 
 func (r Reader) Run(ctx context.Context, in chan<- []*confgroup.Group) {
+	r.Info("instance is started")
+	defer func() { r.Info("instance is stopped") }()
+
 	select {
 	case <-ctx.Done():
 	case in <- r.groups():

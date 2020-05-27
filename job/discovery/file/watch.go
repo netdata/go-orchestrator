@@ -47,8 +47,12 @@ func (w Watcher) String() string {
 }
 
 func (w *Watcher) Run(ctx context.Context, in chan<- []*confgroup.Group) {
+	w.Info("instance is started")
+	defer func() { w.Info("instance is stopped") }()
+
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
+		w.Errorf("fsnotify watcher initialization: %v", err)
 		return
 	}
 

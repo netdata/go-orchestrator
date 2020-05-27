@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"fmt"
 	"io"
 	"os"
 
@@ -29,11 +30,16 @@ type config struct {
 	Modules    map[string]bool `yaml:"modules"`
 }
 
+func (c config) String() string {
+	return fmt.Sprintf("enabled '%v', default_run '%v', max_procs '%d', explicitly enabled modules '%d'",
+		c.Enabled, c.DefaultRun, c.MaxProcs, len(c.Modules))
+}
+
 func (p *Plugin) loadPluginConfig() config {
-	p.Info("loading config")
+	p.Info("loading config file")
 
 	if len(p.ConfDir) == 0 {
-		p.Info("config dir provided, will use defaults")
+		p.Info("config dir not provided, will use defaults")
 		return defaultConfig()
 	}
 
@@ -57,6 +63,8 @@ func (p *Plugin) loadPluginConfig() config {
 }
 
 func (p *Plugin) loadEnabledModules(cfg config) module.Registry {
+	p.Info("loading modules")
+
 	all := p.RunModule == "all" || p.RunModule == ""
 	enabled := module.Registry{}
 
@@ -65,19 +73,22 @@ func (p *Plugin) loadEnabledModules(cfg config) module.Registry {
 			continue
 		}
 		if all && creator.Disabled && !cfg.isExplicitlyEnabled(name) {
-			p.Infof("module '%s' disabled by default, should be explicitly enabled in the config", name)
+			p.Infof("'%s' module disabled by default, should be explicitly enabled in the config", name)
 			continue
 		}
 		if all && !cfg.isImplicitlyEnabled(name) {
-			p.Infof("module '%s' disabled in the config file", name)
+			p.Infof("'%s' module disabled in the config file", name)
 			continue
 		}
 		enabled[name] = creator
 	}
+	p.Infof("registered/enabled modules: %d/%d", len(p.ModuleRegistry), len(enabled))
 	return enabled
 }
 
 func (p *Plugin) buildDiscoveryConf(enabled module.Registry) discovery.Config {
+	p.Info("building discovery config")
+
 	reg := confgroup.Registry{}
 	for name, creator := range enabled {
 		reg.Register(name, confgroup.Default{
@@ -91,14 +102,13 @@ func (p *Plugin) buildDiscoveryConf(enabled module.Registry) discovery.Config {
 	var readPaths, dummyPaths []string
 
 	if len(p.ModulesConfDir) == 0 {
-		p.Info("modules conf dir not provided, will use default config for enabled modules")
+		p.Info("modules conf dir not provided, will use default config for all enabled modules")
 		for name := range enabled {
 			dummyPaths = append(dummyPaths, name)
 		}
 		return discovery.Config{
-			PluginName: p.Name,
-			Registry:   reg,
-			Dummy:      dummy.Config{Names: dummyPaths}}
+			Registry: reg,
+			Dummy:    dummy.Config{Names: dummyPaths}}
 	}
 
 	for name := range enabled {
@@ -115,9 +125,9 @@ func (p *Plugin) buildDiscoveryConf(enabled module.Registry) discovery.Config {
 		}
 	}
 
+	p.Infof("dummy/read/watch paths: %d/%d/%d", len(dummyPaths), len(readPaths), len(p.ModulesSDConfPath))
 	return discovery.Config{
-		PluginName: p.Name,
-		Registry:   reg,
+		Registry: reg,
 		File: file.Config{
 			Read:  readPaths,
 			Watch: p.ModulesSDConfPath,

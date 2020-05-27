@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/netdata/go-orchestrator/job"
+	jobpkg "github.com/netdata/go-orchestrator/job"
 	"github.com/netdata/go-orchestrator/pkg/logger"
 	"github.com/netdata/go-orchestrator/pkg/ticker"
 )
@@ -16,7 +16,7 @@ type (
 		mux   sync.Mutex
 		queue queue
 	}
-	queue []job.Job
+	queue []jobpkg.Job
 )
 
 func NewManager() *Manager {
@@ -27,20 +27,26 @@ func NewManager() *Manager {
 }
 
 func (m *Manager) Run(ctx context.Context) {
+	m.Info("instance is started")
+	defer func() { m.Info("instance is stopped") }()
+
 	tk := ticker.New(time.Second)
 	defer tk.Stop()
+LOOP:
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			break LOOP
 		case clock := <-tk.C:
+			m.Debugf("tick %d", clock)
 			m.notify(clock)
 		}
 	}
+	m.Info("exiting...")
 }
 
 // Starts starts a job and adds it to the job queue.
-func (m *Manager) Start(job job.Job) {
+func (m *Manager) Start(job jobpkg.Job) {
 	m.mux.Lock()
 	defer m.mux.Unlock()
 
@@ -53,8 +59,8 @@ func (m *Manager) Stop(fullName string) {
 	m.mux.Lock()
 	defer m.mux.Unlock()
 
-	if j := m.queue.remove(fullName); j != nil {
-		j.Stop()
+	if job := m.queue.remove(fullName); job != nil {
+		job.Stop()
 	}
 }
 
@@ -75,11 +81,11 @@ func (m *Manager) notify(clock int) {
 	}
 }
 
-func (q *queue) add(job job.Job) {
+func (q *queue) add(job jobpkg.Job) {
 	*q = append(*q, job)
 }
 
-func (q *queue) remove(fullName string) job.Job {
+func (q *queue) remove(fullName string) jobpkg.Job {
 	for idx, v := range *q {
 		if v.FullName() != fullName {
 			continue

@@ -290,8 +290,8 @@ func (j *Job) processMetrics(metrics map[string]int64, startTime time.Time, sinc
 		if chart.remove {
 			continue
 		}
-		i++
 		(*j.charts)[i] = chart
+		i++
 		if len(metrics) == 0 || chart.Obsolete {
 			continue
 		}
@@ -335,8 +335,8 @@ func (j *Job) createChart(chart *Chart) {
 			dim.ID,
 			dim.Name,
 			dim.Algo.String(),
-			dim.Mul,
-			dim.Div,
+			handleZero(dim.Mul),
+			handleZero(dim.Div),
 			dim.DimOpts.String(),
 		)
 	}
@@ -364,8 +364,8 @@ func (j *Job) updateChart(chart *Chart, collected map[string]int64, sinceLastRun
 		if dim.remove {
 			continue
 		}
-		i++
 		chart.Dims[i] = dim
+		i++
 		if v, ok := collected[dim.ID]; !ok {
 			_ = j.api.SETEMPTY(dim.ID)
 		} else {
@@ -403,8 +403,6 @@ func calcSinceLastRun(curTime, prevRun time.Time) int {
 	if prevRun.IsZero() {
 		return 0
 	}
-	// monotonic
-	// durationTo(curTime.Sub(prevRun), time.Microsecond)
 	return int((curTime.UnixNano() - prevRun.UnixNano()) / 1000)
 }
 
@@ -419,4 +417,11 @@ func firstNotEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func handleZero(v int) int {
+	if v == 0 {
+		return 1
+	}
+	return v
 }

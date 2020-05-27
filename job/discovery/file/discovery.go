@@ -68,6 +68,9 @@ func (d *Discovery) registerDiscoverers(cfg Config) error {
 }
 
 func (d *Discovery) Run(ctx context.Context, in chan<- []*confgroup.Group) {
+	d.Info("instance is started")
+	defer func() { d.Info("instance is stopped") }()
+
 	var wg sync.WaitGroup
 
 	for _, dd := range d.discoverers {

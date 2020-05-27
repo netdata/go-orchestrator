@@ -13,7 +13,7 @@ const (
 )
 
 var (
-	base      = New("plugin", "base", "base")
+	base      = New("base", "base")
 	initialID = int64(1)
 	isCLI     = func() bool {
 		switch os.Getenv("NETDATA_FORCE_COLOR") {

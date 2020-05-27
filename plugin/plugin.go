@@ -73,7 +73,6 @@ func New(cfg Config) *Plugin {
 
 // Run
 func (p *Plugin) Run() {
-	p.Info("starting...")
 	go p.signalHandling()
 	go p.keepAlive()
 	serve(p)
@@ -92,14 +91,19 @@ func handleReload(ch chan os.Signal, p *Plugin) {
 	wg.Add(1)
 	go func() { defer wg.Done(); p.run(ctx) }()
 
-	<-ch
+	sig := <-ch
+	p.Infof("received %s signal (%d), stopping running instance", sig, sig)
 	cancel()
 	wg.Wait()
 	handleReload(ch, p)
 }
 
 func (p *Plugin) run(ctx context.Context) {
+	p.Info("instance is started")
+	defer func() { p.Info("instance is stopped") }()
+
 	cfg := p.loadPluginConfig()
+	p.Infof("using config: %s", cfg)
 	if !cfg.Enabled {
 		p.Info("plugin is disabled in the configuration file, exiting...")
 		if !isTerminal {
@@ -121,6 +125,7 @@ func (p *Plugin) run(ctx context.Context) {
 
 	discoverer, err := discovery.NewManager(discCfg)
 	if err != nil {
+		p.Error(err)
 		if isTerminal {
 			os.Exit(0)
 		}
@@ -131,8 +136,9 @@ func (p *Plugin) run(ctx context.Context) {
 
 	builder := build.NewManager()
 	builder.Runner = runner
-	builder.Modules = enabled
+	builder.PluginName = p.Name
 	builder.Out = p.Out
+	builder.Modules = enabled
 
 	var saver *state.Manager
 	if !isTerminal && p.StateFile != "" {
