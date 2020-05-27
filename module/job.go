@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/netdata/go-orchestrator/pkg/logger"
 	"github.com/netdata/go-orchestrator/pkg/netdataapi"
 )
+
+var writeLock = &sync.Mutex{}
 
 func newRuntimeChart(pluginName string) *Chart {
 	return &Chart{
@@ -207,7 +210,9 @@ func (j *Job) cleanup() {
 			j.createChart(chart)
 		}
 	}
+	writeLock.Lock()
 	_, _ = io.Copy(j.out, j.buf)
+	writeLock.Unlock()
 }
 
 func (j *Job) init() bool {
@@ -260,7 +265,9 @@ func (j *Job) runOnce() {
 		j.retries++
 	}
 
+	writeLock.Lock()
 	_, _ = io.Copy(j.out, j.buf)
+	writeLock.Unlock()
 	j.buf.Reset()
 }
 

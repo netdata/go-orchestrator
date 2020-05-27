@@ -10,7 +10,6 @@ import (
 	"github.com/netdata/go-orchestrator/job/confgroup"
 	"github.com/netdata/go-orchestrator/job/run"
 	"github.com/netdata/go-orchestrator/module"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -71,9 +70,11 @@ func TestManager_Run(t *testing.T) {
 	case in <- groups:
 	case <-time.After(time.Second * 2):
 	}
+
 	time.Sleep(time.Second * 5)
 	cancel()
 	wg.Wait()
+	runner.Cleanup()
 	assert.True(t, buf.String() != "")
 }
 
