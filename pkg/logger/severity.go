@@ -51,3 +51,8 @@ func (s Severity) ShortString() string {
 	}
 	return "UNKNOWN"
 }
+
+// SetSeverity sets global severity level
+func SetSeverity(severity Severity) {
+	globalSeverity = severity
+}

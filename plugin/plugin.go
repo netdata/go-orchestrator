@@ -65,7 +65,7 @@ func New(cfg Config) *Plugin {
 		Out:               os.Stdout,
 	}
 
-	logger.PluginName = p.Name
+	logger.Prefix = p.Name
 	p.Logger = logger.NewNamed("main", "main")
 
 	return p

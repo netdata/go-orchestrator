@@ -25,7 +25,7 @@ var (
 			return isatty.IsTerminal(os.Stderr.Fd())
 		}
 	}()
-	PluginName = "plugin"
+	Prefix = "plugin"
 )
 
 // Logger represents a logger object
@@ -46,13 +46,13 @@ func New(pluginName, modName, jobName string) *Logger {
 		formatter: newFormatter(os.Stderr, isCLI, pluginName),
 		modName:   modName,
 		jobName:   jobName,
-		id:        createUniqueID(),
+		id:        uniqueID(),
 	}
 }
 
-// NewNamed returns a new logger that uses PluginName variable as plugin name.
+// NewNamed returns a new logger that uses Prefix variable as a prefix.
 func NewNamed(modName, jobName string) *Logger {
-	return New(PluginName, modName, jobName)
+	return New(Prefix, modName, jobName)
 }
 
 // NewLimited creates a new limited logger
@@ -191,16 +191,6 @@ func (l *Logger) output(severity Severity, callDepth int, msg string) {
 	l.formatter.Output(severity, l.modName, l.jobName, callDepth+2, msg)
 }
 
-// SetSeverity sets global severity level
-func SetSeverity(severity Severity) {
-	globalSeverity = severity
-}
-
-func createUniqueID() int64 {
+func uniqueID() int64 {
 	return atomic.AddInt64(&initialID, 1)
-}
-
-// SetPluginName sets logger plugin name.
-func SetPluginName(name string, log *Logger) {
-	log.formatter.prefix = name + " "
 }

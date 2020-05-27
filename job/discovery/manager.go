@@ -14,10 +14,9 @@ import (
 )
 
 type Config struct {
-	PluginName string
-	Registry   confgroup.Registry
-	File       file.Config
-	Dummy      dummy.Config
+	Registry confgroup.Registry
+	File     file.Config
+	Dummy    dummy.Config
 }
 
 func validateConfig(cfg Config) error {
@@ -58,7 +57,7 @@ func NewManager(cfg Config) (*Manager, error) {
 	if err := mgr.registerDiscoverers(cfg); err != nil {
 		return nil, fmt.Errorf("discovery manager initializaion: %v", err)
 	}
-	mgr.Logger = logger.New(cfg.PluginName, "discovery", "manager")
+	mgr.Logger = logger.NewNamed("discovery", "manager")
 	return mgr, nil
 }
 
