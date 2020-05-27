@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestParseFile(t *testing.T) {
+func TestParse(t *testing.T) {
 	const (
 		jobDef = 11
 		cfgDef = 22
@@ -56,7 +56,7 @@ func TestParseFile(t *testing.T) {
 				},
 			}
 
-			groups, err := parseFile(reg, filename)
+			groups, err := parse(reg, filename)
 
 			require.NoError(t, err)
 			assert.Equal(t, expected, groups)
@@ -94,7 +94,7 @@ func TestParseFile(t *testing.T) {
 				},
 			}
 
-			groups, err := parseFile(reg, filename)
+			groups, err := parse(reg, filename)
 
 			require.NoError(t, err)
 			assert.Equal(t, expected, groups)
@@ -135,7 +135,7 @@ func TestParseFile(t *testing.T) {
 				},
 			}
 
-			groups, err := parseFile(reg, filename)
+			groups, err := parse(reg, filename)
 
 			require.NoError(t, err)
 			assert.Equal(t, expected, groups)
@@ -171,7 +171,7 @@ func TestParseFile(t *testing.T) {
 				},
 			}
 
-			groups, err := parseFile(reg, filename)
+			groups, err := parse(reg, filename)
 
 			require.NoError(t, err)
 			assert.Equal(t, expected, groups)
@@ -203,7 +203,7 @@ func TestParseFile(t *testing.T) {
 				},
 			}
 
-			groups, err := parseFile(reg, filename)
+			groups, err := parse(reg, filename)
 
 			require.NoError(t, err)
 			assert.Equal(t, expected, groups)
@@ -241,7 +241,7 @@ func TestParseFile(t *testing.T) {
 				},
 			}
 
-			groups, err := parseFile(reg, filename)
+			groups, err := parse(reg, filename)
 
 			require.NoError(t, err)
 			assert.Equal(t, expected, groups)
@@ -276,7 +276,7 @@ func TestParseFile(t *testing.T) {
 				},
 			}
 
-			groups, err := parseFile(reg, filename)
+			groups, err := parse(reg, filename)
 
 			require.NoError(t, err)
 			assert.Equal(t, expected, groups)
@@ -307,7 +307,7 @@ func TestParseFile(t *testing.T) {
 				},
 			}
 
-			groups, err := parseFile(reg, filename)
+			groups, err := parse(reg, filename)
 
 			require.NoError(t, err)
 			assert.Equal(t, expected, groups)
@@ -329,7 +329,7 @@ func TestParseFile(t *testing.T) {
 				Configs: []confgroup.Config{},
 			}
 
-			groups, err := parseFile(reg, filename)
+			groups, err := parse(reg, filename)
 
 			require.NoError(t, err)
 			assert.Equal(t, expected, groups)
@@ -352,7 +352,7 @@ func TestParseFile(t *testing.T) {
 				Configs: []confgroup.Config{},
 			}
 
-			groups, err := parseFile(reg, filename)
+			groups, err := parse(reg, filename)
 
 			require.NoError(t, err)
 			assert.Equal(t, expected, groups)
@@ -363,7 +363,7 @@ func TestParseFile(t *testing.T) {
 			}
 
 			filename := tmp.createFile("empty-*")
-			groups, err := parseFile(reg, filename)
+			groups, err := parse(reg, filename)
 
 			require.NoError(t, err)
 			assert.Nil(t, groups)
@@ -373,7 +373,7 @@ func TestParseFile(t *testing.T) {
 
 			filename := tmp.createFile("unknown-format-*")
 			tmp.writeYAML(filename, "unknown")
-			_, err := parseFile(reg, filename)
+			_, err := parse(reg, filename)
 
 			assert.Error(t, err)
 		},

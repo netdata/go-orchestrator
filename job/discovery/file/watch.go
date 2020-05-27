@@ -15,12 +15,12 @@ import (
 
 type (
 	Watcher struct {
-		*logger.Logger
 		paths        []string
 		reg          confgroup.Registry
 		watcher      *fsnotify.Watcher
 		cache        cache
 		refreshEvery time.Duration
+		*logger.Logger
 	}
 	cache map[string]time.Time
 )
@@ -87,6 +87,7 @@ func (w *Watcher) Run(ctx context.Context, in chan<- []*confgroup.Group) {
 			w.refresh(ctx, in)
 		case err := <-w.watcher.Errors:
 			if err != nil {
+				w.Warningf("watch: %v", err)
 			}
 		}
 	}
@@ -103,11 +104,9 @@ func (w *Watcher) fileMatches(file string) bool {
 
 func (w *Watcher) listFiles() (files []string) {
 	for _, pattern := range w.paths {
-		matches, err := filepath.Glob(pattern)
-		if err != nil {
-			continue
+		if matches, err := filepath.Glob(pattern); err == nil {
+			files = append(files, matches...)
 		}
-		files = append(files, matches...)
 	}
 	return files
 }
@@ -124,6 +123,7 @@ func (w *Watcher) refresh(ctx context.Context, in chan<- []*confgroup.Group) {
 	for _, file := range w.listFiles() {
 		fi, err := os.Lstat(file)
 		if err != nil {
+			w.Warningf("lstat '%s': %v", err)
 			continue
 		}
 
@@ -137,8 +137,9 @@ func (w *Watcher) refresh(ctx context.Context, in chan<- []*confgroup.Group) {
 		}
 		w.cache.put(file, fi.ModTime())
 
-		group, err := parseFile(w.reg, file)
+		group, err := parse(w.reg, file)
 		if err != nil {
+			w.Warningf("parse '%s': %v", err)
 			continue
 		}
 		added = append(added, group)
@@ -164,6 +165,7 @@ func (w *Watcher) watchDirs() {
 			path = "./"
 		}
 		if err := w.watcher.Add(path); err != nil {
+			w.Errorf("start watching '%s': %v", path, err)
 		}
 	}
 }
@@ -184,8 +186,8 @@ func (w *Watcher) stop() {
 		}
 	}()
 
-	if err := w.watcher.Close(); err != nil {
-	}
+	// in fact never returns an error
+	_ = w.watcher.Close()
 }
 
 func isChmod(event fsnotify.Event) bool {

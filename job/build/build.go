@@ -100,7 +100,6 @@ func (m *Manager) Run(ctx context.Context, in chan []*confgroup.Group) {
 
 	wg.Wait()
 	<-ctx.Done()
-	m.Info("exiting...")
 }
 
 func (m *Manager) runProcessing(ctx context.Context, in <-chan []*confgroup.Group) {
@@ -183,25 +182,26 @@ func (m *Manager) handleAddCfg(ctx context.Context, cfg confgroup.Config) {
 		return
 	}
 
-	stop, ok := m.retryCache.lookup(cfg)
-	if ok {
+	stop, isRetry := m.retryCache.lookup(cfg)
+	if isRetry {
 		stop()
 		m.retryCache.remove(cfg)
 	}
 
 	job, err := m.buildJob(cfg)
 	if err != nil {
+		m.Warningf("build job module '%s' name '%s'", cfg.Module(), cfg.Name())
 		m.Saver.Save(cfg, buildError)
 		return
 	}
 
-	if !ok && m.PrevState.Contains(cfg, success, retry) {
+	if !isRetry && m.PrevState.Contains(cfg, success, retry) {
 		// 5 minutes
 		job.AutoDetectEvery = 30
 		job.AutoDetectTries = 11
 	}
 
-	switch runDetection(job) {
+	switch v := runDetection(job); v {
 	case success:
 		m.Saver.Save(cfg, success)
 		m.Runner.Start(job)
@@ -214,7 +214,7 @@ func (m *Manager) handleAddCfg(ctx context.Context, cfg confgroup.Config) {
 	case failed:
 		m.Saver.Save(cfg, failed)
 	default:
-		// TODO: log, this should happen never
+		m.Warningf("unknown detection state: state '%s', module '%s' job '%s' (%s)", v, cfg.Module(), cfg.Name())
 	}
 }
 
@@ -235,7 +235,7 @@ func (m *Manager) handleRemoveCfg(cfg confgroup.Config) {
 func (m *Manager) buildJob(cfg confgroup.Config) (*module.Job, error) {
 	creator, ok := m.Modules[cfg.Module()]
 	if !ok {
-		return nil, fmt.Errorf("couldn't find '%s' module, job '%s'", cfg.Module(), cfg.Name())
+		return nil, fmt.Errorf("couldn't find '%s' module", cfg.Module())
 	}
 
 	mod := creator.Create()

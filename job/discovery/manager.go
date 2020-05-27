@@ -53,11 +53,11 @@ func NewManager(cfg Config) (*Manager, error) {
 		discoverers: make([]discoverer, 0),
 		mux:         &sync.RWMutex{},
 		cache:       newCache(),
+		Logger:      logger.New("discovery", "manager"),
 	}
 	if err := mgr.registerDiscoverers(cfg); err != nil {
 		return nil, fmt.Errorf("discovery manager initializaion: %v", err)
 	}
-	mgr.Logger = logger.New("discovery", "manager")
 	return mgr, nil
 }
 
@@ -87,6 +87,7 @@ func (m *Manager) registerDiscoverers(cfg Config) error {
 	if len(m.discoverers) == 0 {
 		return errors.New("zero registered discoverers")
 	}
+	m.Infof("registered discoverers: %v", m.discoverers)
 	return nil
 }
 

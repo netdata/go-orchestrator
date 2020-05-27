@@ -49,6 +49,7 @@ type Plugin struct {
 	MinUpdateEvery    int
 	ModuleRegistry    module.Registry
 	Out               io.Writer
+	api               *netdataapi.API
 	*logger.Logger
 }
 
@@ -67,6 +68,7 @@ func New(cfg Config) *Plugin {
 
 	logger.Prefix = p.Name
 	p.Logger = logger.New("main", "main")
+	p.api = netdataapi.New(p.Out)
 
 	return p
 }
@@ -107,7 +109,7 @@ func (p *Plugin) run(ctx context.Context) {
 	if !cfg.Enabled {
 		p.Info("plugin is disabled in the configuration file, exiting...")
 		if !isTerminal {
-			p.disable()
+			_ = p.api.DISABLE()
 		}
 		os.Exit(0)
 	}
@@ -146,6 +148,7 @@ func (p *Plugin) run(ctx context.Context) {
 		builder.Saver = saver
 		st, err := state.Load(p.StateFile)
 		if err != nil {
+			p.Warningf("couldn't load state file: %v", err)
 			builder.PrevState = st
 		}
 	}
@@ -172,10 +175,6 @@ func (p *Plugin) run(ctx context.Context) {
 	runner.Cleanup()
 }
 
-func (p *Plugin) disable() {
-	_ = netdataapi.New(p.Out).DISABLE()
-}
-
 func (p *Plugin) signalHandling() {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM, syscall.SIGPIPE)
@@ -195,8 +194,7 @@ func (p *Plugin) keepAlive() {
 	if isTerminal {
 		return
 	}
-	api := netdataapi.New(p.Out)
 	for range time.Tick(time.Second) {
-		_ = api.EMPTYLINE()
+		_ = p.api.EMPTYLINE()
 	}
 }

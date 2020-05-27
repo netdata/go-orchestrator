@@ -12,9 +12,9 @@ import (
 
 type (
 	Manager struct {
-		*logger.Logger
 		mux   sync.Mutex
 		queue queue
+		*logger.Logger
 	}
 	queue []jobpkg.Job
 )
@@ -32,17 +32,16 @@ func (m *Manager) Run(ctx context.Context) {
 
 	tk := ticker.New(time.Second)
 	defer tk.Stop()
-LOOP:
+
 	for {
 		select {
 		case <-ctx.Done():
-			break LOOP
+			return
 		case clock := <-tk.C:
 			m.Debugf("tick %d", clock)
 			m.notify(clock)
 		}
 	}
-	m.Info("exiting...")
 }
 
 // Starts starts a job and adds it to the job queue.

@@ -31,9 +31,9 @@ type (
 		Run(ctx context.Context, in chan<- []*confgroup.Group)
 	}
 	Discovery struct {
-		*logger.Logger
 		req         confgroup.Registry
 		discoverers []discoverer
+		*logger.Logger
 	}
 )
 
@@ -42,11 +42,12 @@ func NewDiscovery(cfg Config) (*Discovery, error) {
 		return nil, fmt.Errorf("file discovery config validation: %v", err)
 	}
 
-	var d Discovery
+	d := Discovery{
+		Logger: logger.New("discovery", "file manager"),
+	}
 	if err := d.registerDiscoverers(cfg); err != nil {
 		return nil, fmt.Errorf("file discovery initialization: %v", err)
 	}
-	d.Logger = logger.New("discovery", "file manager")
 	return &d, nil
 }
 

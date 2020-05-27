@@ -26,9 +26,9 @@ type (
 )
 
 type Reader struct {
-	*logger.Logger
 	reg   confgroup.Registry
 	paths []string
+	*logger.Logger
 }
 
 func NewReader(reg confgroup.Registry, paths []string) *Reader {
@@ -66,8 +66,9 @@ func (r Reader) groups() (groups []*confgroup.Group) {
 				continue
 			}
 
-			group, err := parseFile(r.reg, path)
+			group, err := parse(r.reg, path)
 			if err != nil {
+				r.Warningf("parse '%s': %v", err)
 				continue
 			}
 			groups = append(groups, group)

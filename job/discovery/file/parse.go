@@ -10,7 +10,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func parseFile(req confgroup.Registry, path string) (*confgroup.Group, error) {
+func parse(req confgroup.Registry, path string) (*confgroup.Group, error) {
 	bs, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err

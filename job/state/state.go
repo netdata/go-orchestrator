@@ -12,9 +12,9 @@ import (
 )
 
 type Manager struct {
-	*logger.Logger
 	path  string
 	state *State
+	*logger.Logger
 }
 
 func NewManager(path string) *Manager {
@@ -33,16 +33,14 @@ func (m *Manager) Run(ctx context.Context) {
 	defer tk.Stop()
 	defer m.save()
 
-LOOP:
 	for {
 		select {
 		case <-ctx.Done():
-			break LOOP
+			return
 		case <-tk.C:
 			m.save()
 		}
 	}
-	m.Info("exiting...")
 }
 
 func (m *Manager) Save(cfg confgroup.Config, state string) {
@@ -67,8 +65,9 @@ func (m *Manager) save() {
 }
 
 type State struct {
-	mux   *sync.Mutex
-	items map[string]map[string]string
+	mux *sync.Mutex
+	// TODO: we need [module][hash][name]state
+	items map[string]map[string]string // [module][name]state
 }
 
 func (s State) Contains(cfg confgroup.Config, states ...string) bool {
