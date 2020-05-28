@@ -93,6 +93,7 @@ func serve(p *Plugin) {
 		p.Infof("received %s signal (%d), stopping running instance", sig, sig)
 		cancel()
 		wg.Wait()
+		time.Sleep(time.Second)
 	}
 }
 

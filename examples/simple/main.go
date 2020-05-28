@@ -47,7 +47,7 @@ func (e *example) Collect() map[string]int64 {
 
 var (
 	cd, _    = os.Getwd()
-	name     = "plugin"
+	name     = "goplugin"
 	userDir  = os.Getenv("NETDATA_USER_CONFIG_DIR")
 	stockDir = os.Getenv("NETDATA_STOCK_CONFIG_DIR")
 )

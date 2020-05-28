@@ -25,7 +25,7 @@ var (
 			return isatty.IsTerminal(os.Stderr.Fd())
 		}
 	}()
-	Prefix = "plugin"
+	Prefix = "goplugin"
 )
 
 // Logger represents a logger object
