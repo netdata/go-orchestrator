@@ -145,8 +145,7 @@ func (p *Plugin) run(ctx context.Context) {
 	if !isTerminal && p.StateFile != "" {
 		saver = state.NewManager(p.StateFile)
 		builder.Saver = saver
-		st, err := state.Load(p.StateFile)
-		if err != nil {
+		if st, err := state.Load(p.StateFile); err != nil {
 			p.Warningf("couldn't load state file: %v", err)
 		} else {
 			builder.PrevState = st
