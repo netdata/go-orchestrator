@@ -105,10 +105,11 @@ func (p *Plugin) run(ctx context.Context) {
 	p.Infof("using config: %s", cfg)
 	if !cfg.Enabled {
 		p.Info("plugin is disabled in the configuration file, exiting...")
-		if !isTerminal {
-			_ = p.api.DISABLE()
+		if isTerminal {
+			os.Exit(0)
 		}
-		os.Exit(0)
+		_ = p.api.DISABLE()
+		return
 	}
 
 	enabled := p.loadEnabledModules(cfg)
@@ -117,6 +118,7 @@ func (p *Plugin) run(ctx context.Context) {
 		if isTerminal {
 			os.Exit(0)
 		}
+		_ = p.api.DISABLE()
 		return
 	}
 
@@ -143,9 +145,9 @@ func (p *Plugin) run(ctx context.Context) {
 	if !isTerminal && p.StateFile != "" {
 		saver = state.NewManager(p.StateFile)
 		builder.Saver = saver
-		st, err := state.Load(p.StateFile)
-		if err != nil {
+		if st, err := state.Load(p.StateFile); err != nil {
 			p.Warningf("couldn't load state file: %v", err)
+		} else {
 			builder.PrevState = st
 		}
 	}
