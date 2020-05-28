@@ -105,11 +105,10 @@ func (p *Plugin) run(ctx context.Context) {
 	p.Infof("using config: %s", cfg)
 	if !cfg.Enabled {
 		p.Info("plugin is disabled in the configuration file, exiting...")
-		if !isTerminal {
-			_ = p.api.DISABLE()
-		} else {
+		if isTerminal {
 			os.Exit(0)
 		}
+		_ = p.api.DISABLE()
 		return
 	}
 
