@@ -9,8 +9,9 @@ import (
 // Option defines command line options.
 type Option struct {
 	UpdateEvery int
-	Module      string   `short:"m" long:"modules" description:"modules name" default:"all"`
-	ConfigDir   []string `short:"c" long:"config" description:"config dir"`
+	Module      string   `short:"m" long:"modules" description:"module name to run" default:"all"`
+	ConfDir     []string `short:"c" long:"config-dir" description:"config dir to read"`
+	WatchPath   []string `short:"w" long:"watch-path" description:"config path to watch"`
 	Debug       bool     `short:"d" long:"debug" description:"debug mode"`
 	Version     bool     `short:"v" long:"version" description:"display the version and exit"`
 }

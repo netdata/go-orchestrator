@@ -1,16 +1,18 @@
 package main
 
 import (
-	"flag"
 	"fmt"
-	"log"
 	"math/rand"
 	"os"
+	"path"
 
 	"github.com/netdata/go-orchestrator/cli"
 	"github.com/netdata/go-orchestrator/module"
 	"github.com/netdata/go-orchestrator/pkg/logger"
+	"github.com/netdata/go-orchestrator/pkg/multipath"
 	"github.com/netdata/go-orchestrator/plugin"
+
+	"github.com/jessevdk/go-flags"
 )
 
 var version = "v0.0.1-example"
@@ -43,6 +45,45 @@ func (e *example) Collect() map[string]int64 {
 	}
 }
 
+var (
+	cd, _    = os.Getwd()
+	name     = "plugin"
+	userDir  = os.Getenv("NETDATA_USER_CONFIG_DIR")
+	stockDir = os.Getenv("NETDATA_STOCK_CONFIG_DIR")
+)
+
+func confDir(dirs []string) (mpath multipath.MultiPath) {
+	if len(dirs) > 0 {
+		return dirs
+	}
+	if userDir != "" && stockDir != "" {
+		return multipath.New(
+			userDir,
+			stockDir,
+		)
+	}
+	return multipath.New(
+		path.Join(cd, "/../../../../etc/netdata"),
+		path.Join(cd, "/../../../../usr/lib/netdata/conf.d"),
+	)
+}
+
+func modulesConfDir(dirs []string) multipath.MultiPath {
+	if len(dirs) > 0 {
+		return dirs
+	}
+	if userDir != "" && stockDir != "" {
+		return multipath.New(
+			path.Join(userDir, name),
+			path.Join(stockDir, name),
+		)
+	}
+	return multipath.New(
+		path.Join(cd, "/../../../../etc/netdata", name),
+		path.Join(cd, "/../../../../usr/lib/netdata/conf.d", name),
+	)
+}
+
 func main() {
 	opt := parseCLI()
 
@@ -56,22 +97,14 @@ func main() {
 
 	module.Register("example", module.Creator{Create: func() module.Module { return &example{} }})
 
-	p, err := plugin.New(plugin.Config{
-		Name:           "test.d",
-		MinUpdateEvery: 1,
-		UseModule:      "",
-		//ConfDir: []string{
-		//	"/Users/ilyam/Projects/golang/go-orchestrator/examples/simple/",
-		//},
-		SDConfPath: []string{
-			"/opt/sd.yml",
-			//"/Users/ilyam/Projects/golang/go-orchestrator/examples/simple/sd.yml",
-		},
+	p := plugin.New(plugin.Config{
+		Name:              name,
+		ConfDir:           confDir(opt.ConfDir),
+		ModulesConfDir:    modulesConfDir(opt.ConfDir),
+		ModulesSDConfPath: opt.WatchPath,
+		RunModule:         opt.Module,
+		MinUpdateEvery:    opt.UpdateEvery,
 	})
-
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	p.Run()
 }
@@ -79,11 +112,10 @@ func main() {
 func parseCLI() *cli.Option {
 	opt, err := cli.Parse(os.Args)
 	if err != nil {
-		if err != flag.ErrHelp {
-			os.Exit(1)
+		if flagsErr, ok := err.(*flags.Error); ok && flagsErr.Type == flags.ErrHelp {
+			os.Exit(0)
 		}
-		os.Exit(0)
+		os.Exit(1)
 	}
-
 	return opt
 }

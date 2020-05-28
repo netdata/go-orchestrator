@@ -57,7 +57,7 @@ func NewJob(cfg JobConfig) *Job {
 		out:             cfg.Out,
 		AutoDetectTries: infTries,
 		runChart:        newRuntimeChart(cfg.PluginName),
-		stop:            make(chan struct{}, 1),
+		stop:            make(chan struct{}),
 		tick:            make(chan int),
 		buf:             &buf,
 		api:             netdataapi.New(&buf),
@@ -149,6 +149,7 @@ func (j *Job) AutoDetection() (ok bool) {
 		j.Error("check failed")
 		return
 	}
+	j.Info("check success")
 	if ok = j.postCheck(); !ok {
 		j.Error("postCheck failed")
 		j.disableAutoDetection()
@@ -168,6 +169,9 @@ func (j *Job) Tick(clock int) {
 
 // Start starts job main loop.
 func (j *Job) Start() {
+	j.Infof("started, data collection interval %ds", j.updateEvery)
+	defer func() { j.Info("stopped") }()
+
 LOOP:
 	for {
 		select {
@@ -184,8 +188,9 @@ LOOP:
 	j.stop <- struct{}{}
 }
 
-// Stop stops job main loop.
+// Stop stops job main loop. It blocks until the job is stopped.
 func (j *Job) Stop() {
+	// TODO: should have blocking and non blocking stop
 	j.stop <- struct{}{}
 	<-j.stop
 }
@@ -204,10 +209,12 @@ func (j *Job) cleanup() {
 		j.runChart.MarkRemove()
 		j.createChart(j.runChart)
 	}
-	for _, chart := range *j.charts {
-		if chart.created {
-			chart.MarkRemove()
-			j.createChart(chart)
+	if j.charts != nil {
+		for _, chart := range *j.charts {
+			if chart.created {
+				chart.MarkRemove()
+				j.createChart(chart)
+			}
 		}
 	}
 	writeLock.Lock()
