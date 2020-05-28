@@ -4,20 +4,17 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 
-	"github.com/netdata/go-orchestrator/logger"
+	"github.com/netdata/go-orchestrator/pkg/logger"
+	"github.com/netdata/go-orchestrator/pkg/netdataapi"
 )
 
-const (
-	penaltyStep = 5
-	maxPenalty  = 600
-	infTries    = -1
-)
+var writeLock = &sync.Mutex{}
 
-// NewJob returns new job.
-func NewJob(pluginName string, moduleName string, module Module, out io.Writer) *Job {
-	runtimeChart := &Chart{
+func newRuntimeChart(pluginName string) *Chart {
+	return &Chart{
 		typeID: "netdata",
 		Units:  "ms",
 		Fam:    pluginName,
@@ -26,72 +23,92 @@ func NewJob(pluginName string, moduleName string, module Module, out io.Writer) 
 			{ID: "time"},
 		},
 	}
-	buf := &bytes.Buffer{}
+}
 
+type JobConfig struct {
+	PluginName      string
+	Name            string
+	ModuleName      string
+	FullName        string
+	Module          Module
+	Out             io.Writer
+	UpdateEvery     int
+	AutoDetectEvery int
+	Priority        int
+}
+
+const (
+	penaltyStep = 5
+	maxPenalty  = 600
+	infTries    = -1
+)
+
+func NewJob(cfg JobConfig) *Job {
+	var buf bytes.Buffer
 	return &Job{
+		pluginName:      cfg.PluginName,
+		name:            cfg.Name,
+		moduleName:      cfg.ModuleName,
+		fullName:        cfg.FullName,
+		updateEvery:     cfg.UpdateEvery,
+		AutoDetectEvery: cfg.AutoDetectEvery,
+		priority:        cfg.Priority,
+		module:          cfg.Module,
+		out:             cfg.Out,
 		AutoDetectTries: infTries,
-		pluginName:      pluginName,
-		moduleName:      moduleName,
-		module:          module,
-		runtimeChart:    runtimeChart,
-		out:             out,
-		stopHook:        make(chan struct{}, 1),
+		runChart:        newRuntimeChart(cfg.PluginName),
+		stop:            make(chan struct{}),
 		tick:            make(chan int),
-		buf:             buf,
-		apiWriter:       apiWriter{Writer: buf},
+		buf:             &buf,
+		api:             netdataapi.New(&buf),
 	}
 }
 
 // Job represents a job. It's a module wrapper.
 type Job struct {
-	Nam             string `yaml:"name"`
-	UpdateEvery     int    `yaml:"update_every"`
-	AutoDetectEvery int    `yaml:"autodetection_retry"`
-	AutoDetectTries int    `yaml:"-"`
-	Priority        int    `yaml:"priority"`
+	pluginName string
+	name       string
+	moduleName string
+	fullName   string
+
+	updateEvery     int
+	AutoDetectEvery int
+	AutoDetectTries int
+	priority        int
 
 	*logger.Logger
 
-	pluginName string
-	moduleName string
-	module     Module
+	module Module
 
 	initialized bool
 	panicked    bool
 
-	stopHook     chan struct{}
-	runtimeChart *Chart
-	charts       *Charts
-	tick         chan int
-	out          io.Writer
-	buf          *bytes.Buffer
-	apiWriter    apiWriter
+	runChart *Chart
+	charts   *Charts
+	tick     chan int
+	out      io.Writer
+	buf      *bytes.Buffer
+	api      *netdataapi.API
 
 	retries int
 	prevRun time.Time
+
+	stop chan struct{}
 }
 
-// FullName returns full name.
-// If name isn't specified or equal to module name it returns module name.
+// FullName returns job full name.
 func (j Job) FullName() string {
-	if j.Nam == "" || j.Nam == j.moduleName {
-		return j.ModuleName()
-	}
-	return fmt.Sprintf("%s_%s", j.ModuleName(), j.Name())
+	return j.fullName
 }
 
-// ModuleName returns module name.
+// ModuleName returns job module name.
 func (j Job) ModuleName() string {
 	return j.moduleName
 }
 
-// Name returns name.
-// If name isn't specified it returns module name.
+// Name returns job name.
 func (j Job) Name() string {
-	if j.Nam == "" {
-		return j.moduleName
-	}
-	return j.Nam
+	return j.name
 }
 
 // Panicked returns 'panicked' flag value.
@@ -99,13 +116,24 @@ func (j Job) Panicked() bool {
 	return j.panicked
 }
 
+// AutoDetectionEvery returns value of AutoDetectEvery.
+func (j Job) AutoDetectionEvery() int {
+	return j.AutoDetectEvery
+}
+
+// RetryAutoDetection returns whether it is needed to retry autodetection.
+func (j Job) RetryAutoDetection() bool {
+	return j.AutoDetectEvery > 0 && (j.AutoDetectTries == infTries || j.AutoDetectTries > 0)
+}
+
+// AutoDetection invokes init, check and postCheck. It handles panic.
 func (j *Job) AutoDetection() (ok bool) {
 	defer func() {
 		if r := recover(); r != nil {
 			ok = false
 			j.Errorf("PANIC %v", r)
 			j.panicked = true
-			j.disableAutodetection()
+			j.disableAutoDetection()
 		}
 		if !ok {
 			j.module.Cleanup()
@@ -113,64 +141,19 @@ func (j *Job) AutoDetection() (ok bool) {
 	}()
 
 	if ok = j.init(); !ok {
-		j.Error("Init failed")
-		j.disableAutodetection()
+		j.Error("init failed")
+		j.disableAutoDetection()
 		return
 	}
 	if ok = j.check(); !ok {
-		j.Error("Check failed")
+		j.Error("check failed")
 		return
 	}
+	j.Info("check success")
 	if ok = j.postCheck(); !ok {
-		j.Error("PostCheck failed")
-		j.disableAutodetection()
+		j.Error("postCheck failed")
+		j.disableAutoDetection()
 		return
-	}
-	return true
-}
-
-func (j *Job) disableAutodetection() {
-	j.AutoDetectEvery = 0
-}
-
-// Init calls module Init and returns its value.
-func (j *Job) init() bool {
-	if j.initialized {
-		return true
-	}
-
-	limitedLogger := logger.NewLimited(j.pluginName, j.ModuleName(), j.Name())
-	j.Logger = limitedLogger
-	j.module.SetLogger(limitedLogger)
-
-	ok := j.module.Init()
-	if ok {
-		j.initialized = true
-	}
-	return ok
-}
-
-// check calls module check and returns its value.
-func (j *Job) check() bool {
-	ok := j.module.Check()
-	if !ok {
-		if j.AutoDetectTries != infTries {
-			j.AutoDetectTries--
-		}
-	}
-	return ok
-}
-
-// PostCheck calls module Charts.
-func (j *Job) postCheck() bool {
-	j.charts = j.module.Charts()
-	if j.charts == nil {
-		j.Error("Charts can't be nil")
-		return false
-	}
-	if err := checkCharts(*j.charts...); err != nil {
-		j.Errorf("error on checking charts : %v", err)
-		return false
 	}
 	return true
 }
@@ -180,35 +163,96 @@ func (j *Job) Tick(clock int) {
 	select {
 	case j.tick <- clock:
 	default:
-		j.Debug("Skip the tick due to previous run hasn't been finished")
+		j.Debug("skip the tick due to previous run hasn't been finished")
 	}
 }
 
-// Start simply invokes MainLoop.
+// Start starts job main loop.
 func (j *Job) Start() {
-	j.MainLoop()
-}
+	j.Infof("started, data collection interval %ds", j.updateEvery)
+	defer func() { j.Info("stopped") }()
 
-// Stop stops MainLoop
-func (j *Job) Stop() {
-	j.stopHook <- struct{}{}
-}
-
-// MainLoop is a job main function.
-func (j *Job) MainLoop() {
 LOOP:
 	for {
 		select {
-		case <-j.stopHook:
-			j.module.Cleanup()
+		case <-j.stop:
 			break LOOP
 		case t := <-j.tick:
-			doRun := t%(j.UpdateEvery+j.penalty()) == 0
-			if doRun {
+			if t%(j.updateEvery+j.penalty()) == 0 {
 				j.runOnce()
 			}
 		}
 	}
+	j.module.Cleanup()
+	j.cleanup()
+	j.stop <- struct{}{}
+}
+
+// Stop stops job main loop. It blocks until the job is stopped.
+func (j *Job) Stop() {
+	// TODO: should have blocking and non blocking stop
+	j.stop <- struct{}{}
+	<-j.stop
+}
+
+func (j *Job) disableAutoDetection() {
+	j.AutoDetectEvery = 0
+}
+
+func (j *Job) cleanup() {
+	if j.Logger != nil {
+		logger.GlobalMsgCountWatcher.Unregister(j.Logger)
+	}
+	j.buf.Reset()
+
+	if j.runChart.created {
+		j.runChart.MarkRemove()
+		j.createChart(j.runChart)
+	}
+	if j.charts != nil {
+		for _, chart := range *j.charts {
+			if chart.created {
+				chart.MarkRemove()
+				j.createChart(chart)
+			}
+		}
+	}
+	writeLock.Lock()
+	_, _ = io.Copy(j.out, j.buf)
+	writeLock.Unlock()
+}
+
+func (j *Job) init() bool {
+	if j.initialized {
+		return true
+	}
+
+	log := logger.NewLimited(j.ModuleName(), j.Name())
+	j.Logger = log
+	j.module.GetBase().Logger = log
+
+	j.initialized = j.module.Init()
+	return j.initialized
+}
+
+func (j *Job) check() bool {
+	ok := j.module.Check()
+	if !ok && j.AutoDetectTries != infTries {
+		j.AutoDetectTries--
+	}
+	return ok
+}
+
+func (j *Job) postCheck() bool {
+	if j.charts = j.module.Charts(); j.charts == nil {
+		j.Error("nil charts")
+		return false
+	}
+	if err := checkCharts(*j.charts...); err != nil {
+		j.Errorf("charts check: %v", err)
+		return false
+	}
+	return true
 }
 
 func (j *Job) runOnce() {
@@ -228,18 +272,10 @@ func (j *Job) runOnce() {
 		j.retries++
 	}
 
+	writeLock.Lock()
 	_, _ = io.Copy(j.out, j.buf)
+	writeLock.Unlock()
 	j.buf.Reset()
-}
-
-// AutoDetectionRetry returns value of AutoDetectEvery.
-func (j Job) AutoDetectionEvery() int {
-	return j.AutoDetectEvery
-}
-
-// ReDoAutoDetection returns whether it is needed to retry autodetection.
-func (j Job) RetryAutoDetection() bool {
-	return j.AutoDetectEvery > 0 && (j.AutoDetectTries == infTries || j.AutoDetectTries > 0)
 }
 
 func (j *Job) collect() (result map[string]int64) {
@@ -254,54 +290,48 @@ func (j *Job) collect() (result map[string]int64) {
 }
 
 func (j *Job) processMetrics(metrics map[string]int64, startTime time.Time, sinceLastRun int) bool {
-	if !j.runtimeChart.created {
-		j.runtimeChart.ID = fmt.Sprintf("execution_time_of_%s", j.FullName())
-		j.runtimeChart.Title = fmt.Sprintf("Execution Time for %s", j.FullName())
-		j.createChart(j.runtimeChart)
+	if !j.runChart.created {
+		j.runChart.ID = fmt.Sprintf("execution_time_of_%s", j.FullName())
+		j.runChart.Title = fmt.Sprintf("Execution Time for %s", j.FullName())
+		j.createChart(j.runChart)
 	}
 
-	var (
-		remove       []string
-		totalUpdated int
-		elapsed      = int64(durationTo(time.Now().Sub(startTime), time.Millisecond))
-	)
+	elapsed := int64(durationTo(time.Since(startTime), time.Millisecond))
 
+	var i, updated int
 	for _, chart := range *j.charts {
 		if !chart.created {
 			j.createChart(chart)
 		}
 		if chart.remove {
-			remove = append(remove, chart.ID)
 			continue
 		}
+		(*j.charts)[i] = chart
+		i++
 		if len(metrics) == 0 || chart.Obsolete {
 			continue
 		}
 		if j.updateChart(chart, metrics, sinceLastRun) {
-			totalUpdated++
+			updated++
 		}
-
 	}
+	*j.charts = (*j.charts)[:i]
 
-	for _, id := range remove {
-		_ = j.charts.Remove(id)
-	}
-
-	if totalUpdated == 0 {
+	if updated == 0 {
 		return false
 	}
-
-	j.updateChart(j.runtimeChart, map[string]int64{"time": elapsed}, sinceLastRun)
-
+	j.updateChart(j.runChart, map[string]int64{"time": elapsed}, sinceLastRun)
 	return true
 }
 
 func (j *Job) createChart(chart *Chart) {
+	defer func() { chart.created = true }()
+
 	if chart.Priority == 0 {
-		chart.Priority = j.Priority
-		j.Priority++
+		chart.Priority = j.priority
+		j.priority++
 	}
-	_ = j.apiWriter.chart(
+	_ = j.api.CHART(
 		firstNotEmpty(chart.typeID, j.FullName()),
 		chart.ID,
 		chart.OverID,
@@ -309,91 +339,76 @@ func (j *Job) createChart(chart *Chart) {
 		chart.Units,
 		chart.Fam,
 		chart.Ctx,
-		chart.Type,
+		chart.Type.String(),
 		chart.Priority,
-		j.UpdateEvery,
-		chart.Opts,
+		j.updateEvery,
+		chart.Opts.String(),
 		j.pluginName,
 		j.moduleName,
 	)
 	for _, dim := range chart.Dims {
-		_ = j.apiWriter.dimension(
+		_ = j.api.DIMENSION(
 			dim.ID,
 			dim.Name,
-			dim.Algo,
-			dim.Mul,
-			dim.Div,
-			dim.DimOpts,
+			dim.Algo.String(),
+			handleZero(dim.Mul),
+			handleZero(dim.Div),
+			dim.DimOpts.String(),
 		)
 	}
 	for _, v := range chart.Vars {
-		_ = j.apiWriter.varSet(
+		_ = j.api.VARIABLE(
 			v.ID,
 			v.Value,
 		)
 	}
-	_, _ = j.apiWriter.Write([]byte("\n"))
-
-	chart.created = true
+	_ = j.api.EMPTYLINE()
 }
 
-func (j *Job) updateChart(chart *Chart, data map[string]int64, sinceLastRun int) bool {
+func (j *Job) updateChart(chart *Chart, collected map[string]int64, sinceLastRun int) bool {
 	if !chart.updated {
 		sinceLastRun = 0
 	}
 
-	_ = j.apiWriter.begin(
+	_ = j.api.BEGIN(
 		firstNotEmpty(chart.typeID, j.FullName()),
 		chart.ID,
 		sinceLastRun,
 	)
-
-	var (
-		remove  []string
-		updated int
-	)
-
+	var i, updated int
 	for _, dim := range chart.Dims {
 		if dim.remove {
-			remove = append(remove, dim.ID)
 			continue
 		}
-		v, ok := data[dim.ID]
-
-		if !ok {
-			_ = j.apiWriter.dimSetEmpty(dim.ID)
+		chart.Dims[i] = dim
+		i++
+		if v, ok := collected[dim.ID]; !ok {
+			_ = j.api.SETEMPTY(dim.ID)
 		} else {
-			_ = j.apiWriter.dimSet(dim.ID, v)
+			_ = j.api.SET(dim.ID, v)
 			updated++
 		}
 	}
+	chart.Dims = chart.Dims[:i]
 
-	for _, id := range remove {
-		_ = chart.RemoveDim(id)
-	}
-
-	for _, variable := range chart.Vars {
-		v, ok := data[variable.ID]
-		if ok {
-			_ = j.apiWriter.varSet(variable.ID, v)
+	for _, vr := range chart.Vars {
+		if v, ok := collected[vr.ID]; ok {
+			_ = j.api.VARIABLE(vr.ID, v)
 		}
+
 	}
+	_ = j.api.END()
 
-	_ = j.apiWriter.end()
-
-	chart.updated = updated > 0
-
-	if chart.updated {
+	if chart.updated = updated > 0; chart.updated {
 		chart.Retries = 0
 	} else {
 		chart.Retries++
 	}
-
 	return chart.updated
 }
 
 func (j Job) penalty() int {
-	v := j.retries / penaltyStep * penaltyStep * j.UpdateEvery / 2
+	v := j.retries / penaltyStep * penaltyStep * j.updateEvery / 2
 	if v > maxPenalty {
 		return maxPenalty
 	}
@@ -404,8 +419,6 @@ func calcSinceLastRun(curTime, prevRun time.Time) int {
 	if prevRun.IsZero() {
 		return 0
 	}
-	// monotonic
-	// durationTo(curTime.Sub(prevRun), time.Microsecond)
 	return int((curTime.UnixNano() - prevRun.UnixNano()) / 1000)
 }
 
@@ -420,4 +433,11 @@ func firstNotEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func handleZero(v int) int {
+	if v == 0 {
+		return 1
+	}
+	return v
 }

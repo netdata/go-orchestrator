@@ -58,21 +58,6 @@ func TestChartType_String(t *testing.T) {
 	}
 }
 
-func TestDimDivMul_String(t *testing.T) {
-	cases := []struct {
-		expected string
-		actual   fmt.Stringer
-	}{
-		{"", dimDivMul(0)},
-		{"1", dimDivMul(1)},
-		{"-1", dimDivMul(-1)},
-	}
-
-	for _, v := range cases {
-		assert.Equal(t, v.expected, v.actual.String())
-	}
-}
-
 func TestOpts_String(t *testing.T) {
 	cases := []struct {
 		expected string

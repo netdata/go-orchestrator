@@ -6,23 +6,28 @@ import (
 	"testing"
 	"time"
 
-	"github.com/netdata/go-orchestrator/logger"
-
 	"github.com/stretchr/testify/assert"
 )
 
-var (
-	testPluginName = "pluginTest"
-	testModName    = "modName"
-	testJobName    = "jobName"
+const (
+	pluginName = "plugin"
+	modName    = "module"
+	jobName    = "job"
 )
 
 func newTestJob() *Job {
 	return NewJob(
-		testPluginName,
-		testModName,
-		nil,
-		ioutil.Discard,
+		JobConfig{
+			PluginName:      pluginName,
+			Name:            jobName,
+			ModuleName:      modName,
+			FullName:        modName + "_" + jobName,
+			Module:          nil,
+			Out:             ioutil.Discard,
+			UpdateEvery:     0,
+			AutoDetectEvery: 0,
+			Priority:        0,
+		},
 	)
 }
 
@@ -33,26 +38,19 @@ func TestNewJob(t *testing.T) {
 func TestJob_FullName(t *testing.T) {
 	job := newTestJob()
 
-	assert.Equal(t, job.FullName(), testModName)
-	job.Nam = testModName
-	assert.Equal(t, job.FullName(), testModName)
-	job.Nam = testJobName
-	assert.Equal(t, job.FullName(), fmt.Sprintf("%s_%s", testModName, testJobName))
-
+	assert.Equal(t, job.FullName(), fmt.Sprintf("%s_%s", modName, jobName))
 }
 
 func TestJob_ModuleName(t *testing.T) {
 	job := newTestJob()
 
-	assert.Equal(t, job.ModuleName(), testModName)
+	assert.Equal(t, job.ModuleName(), modName)
 }
 
 func TestJob_Name(t *testing.T) {
 	job := newTestJob()
 
-	assert.Equal(t, job.Name(), testModName)
-	job.Nam = testJobName
-	assert.Equal(t, job.Name(), testJobName)
+	assert.Equal(t, job.Name(), jobName)
 }
 
 func TestJob_Panicked(t *testing.T) {
@@ -66,8 +64,6 @@ func TestJob_Panicked(t *testing.T) {
 func TestJob_AutoDetectionEvery(t *testing.T) {
 	job := newTestJob()
 
-	assert.Equal(t, job.AutoDetectionEvery(), job.AutoDetectEvery)
-	job.AutoDetectEvery = 1
 	assert.Equal(t, job.AutoDetectionEvery(), job.AutoDetectEvery)
 }
 
@@ -220,7 +216,7 @@ func TestJob_AutoDetection_PanicPostCheck(t *testing.T) {
 	assert.True(t, m.CleanupDone)
 }
 
-func TestJob_MainLoop(t *testing.T) {
+func TestJob_Start(t *testing.T) {
 	m := &MockModule{
 		ChartsFunc: func() *Charts {
 			return &Charts{
@@ -245,7 +241,7 @@ func TestJob_MainLoop(t *testing.T) {
 	job := newTestJob()
 	job.module = m
 	job.charts = job.module.Charts()
-	job.UpdateEvery = 1
+	job.updateEvery = 1
 
 	go func() {
 		for i := 1; i < 3; i++ {
@@ -255,7 +251,7 @@ func TestJob_MainLoop(t *testing.T) {
 		job.Stop()
 	}()
 
-	job.MainLoop()
+	job.Start()
 
 	assert.True(t, m.CleanupDone)
 }
@@ -268,7 +264,7 @@ func TestJob_MainLoop_Panic(t *testing.T) {
 	}
 	job := newTestJob()
 	job.module = m
-	job.UpdateEvery = 1
+	job.updateEvery = 1
 
 	go func() {
 		for i := 1; i < 3; i++ {
@@ -278,7 +274,7 @@ func TestJob_MainLoop_Panic(t *testing.T) {
 		job.Stop()
 	}()
 
-	job.MainLoop()
+	job.Start()
 
 	assert.True(t, job.Panicked())
 	assert.True(t, m.CleanupDone)
@@ -289,23 +285,4 @@ func TestJob_Tick(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		job.Tick(i)
 	}
-}
-
-func TestJob_Start(t *testing.T) {
-	job := newTestJob()
-	job.module = &MockModule{}
-
-	go func() {
-		time.Sleep(time.Second)
-		job.Stop()
-	}()
-
-	job.Start()
-}
-
-func TestBase_SetLogger(t *testing.T) {
-	var b Base
-	b.SetLogger(&logger.Logger{})
-
-	assert.NotNil(t, b.Logger)
 }

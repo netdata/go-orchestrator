@@ -1,7 +1,7 @@
 package module
 
 import (
-	"github.com/netdata/go-orchestrator/logger"
+	"github.com/netdata/go-orchestrator/pkg/logger"
 )
 
 // Module is an interface that represents a module.
@@ -21,11 +21,10 @@ type Module interface {
 	// Collect collects metrics.
 	Collect() map[string]int64
 
-	// SetLogger SetLogger
-	SetLogger(l *logger.Logger)
-
 	// Cleanup Cleanup
 	Cleanup()
+
+	GetBase() *Base
 }
 
 // Base is a helper struct. All modules should embed this struct.
@@ -33,5 +32,4 @@ type Base struct {
 	*logger.Logger
 }
 
-// SetLogger SetLogger
-func (b *Base) SetLogger(l *logger.Logger) { b.Logger = l }
+func (b *Base) GetBase() *Base { return b }
