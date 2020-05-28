@@ -107,8 +107,10 @@ func (p *Plugin) run(ctx context.Context) {
 		p.Info("plugin is disabled in the configuration file, exiting...")
 		if !isTerminal {
 			_ = p.api.DISABLE()
+		} else {
+			os.Exit(0)
 		}
-		os.Exit(0)
+		return
 	}
 
 	enabled := p.loadEnabledModules(cfg)
@@ -146,6 +148,7 @@ func (p *Plugin) run(ctx context.Context) {
 		st, err := state.Load(p.StateFile)
 		if err != nil {
 			p.Warningf("couldn't load state file: %v", err)
+		} else {
 			builder.PrevState = st
 		}
 	}
