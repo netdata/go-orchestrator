@@ -88,7 +88,12 @@ func NewManager() *Manager {
 
 func (m *Manager) Run(ctx context.Context, in chan []*confgroup.Group) {
 	m.Info("instance is started")
-	defer func() { m.Info("instance is stopped") }()
+	defer func() {
+		for _, stop := range *m.retryCache {
+			stop()
+		}
+		m.Info("instance is stopped")
+	}()
 
 	var wg sync.WaitGroup
 
