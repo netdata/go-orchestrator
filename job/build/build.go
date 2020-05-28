@@ -88,12 +88,7 @@ func NewManager() *Manager {
 
 func (m *Manager) Run(ctx context.Context, in chan []*confgroup.Group) {
 	m.Info("instance is started")
-	defer func() {
-		for _, stop := range *m.retryCache {
-			stop()
-		}
-		m.Info("instance is stopped")
-	}()
+	defer func() { m.cleanup(); m.Info("instance is stopped") }()
 
 	var wg sync.WaitGroup
 
@@ -105,6 +100,12 @@ func (m *Manager) Run(ctx context.Context, in chan []*confgroup.Group) {
 
 	wg.Wait()
 	<-ctx.Done()
+}
+
+func (m *Manager) cleanup() {
+	for _, stop := range *m.retryCache {
+		stop()
+	}
 }
 
 func (m *Manager) runProcessing(ctx context.Context, in <-chan []*confgroup.Group) {
