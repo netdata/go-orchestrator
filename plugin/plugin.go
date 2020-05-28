@@ -118,6 +118,7 @@ func (p *Plugin) run(ctx context.Context) {
 		if isTerminal {
 			os.Exit(0)
 		}
+		_ = p.api.DISABLE()
 		return
 	}
 
