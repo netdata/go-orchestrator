@@ -71,6 +71,54 @@ func TestWatcher_Run(t *testing.T) {
 			}
 			return sim
 		},
+		"empty file": func(tmp *tmpDir) discoverySim {
+			reg := confgroup.Registry{
+				"module": {},
+			}
+			filename := tmp.join("module.conf")
+			discovery := prepareDiscovery(t, Config{
+				Registry: reg,
+				Watch:    []string{tmp.join("*.conf")},
+			})
+			expected := []*confgroup.Group{
+				{
+					Source: filename,
+				},
+			}
+
+			sim := discoverySim{
+				discovery: discovery,
+				beforeRun: func() {
+					tmp.writeString(filename, "")
+				},
+				expectedGroups: expected,
+			}
+			return sim
+		},
+		"only comments, no data": func(tmp *tmpDir) discoverySim {
+			reg := confgroup.Registry{
+				"module": {},
+			}
+			filename := tmp.join("module.conf")
+			discovery := prepareDiscovery(t, Config{
+				Registry: reg,
+				Watch:    []string{tmp.join("*.conf")},
+			})
+			expected := []*confgroup.Group{
+				{
+					Source: filename,
+				},
+			}
+
+			sim := discoverySim{
+				discovery: discovery,
+				beforeRun: func() {
+					tmp.writeString(filename, "# a comment")
+				},
+				expectedGroups: expected,
+			}
+			return sim
+		},
 		"add file": func(tmp *tmpDir) discoverySim {
 			reg := confgroup.Registry{
 				"module": {},

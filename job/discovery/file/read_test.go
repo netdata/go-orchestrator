@@ -35,19 +35,24 @@ func TestReader_Run(t *testing.T) {
 
 	module1 := tmp.join("module1.conf")
 	module2 := tmp.join("module2.conf")
+	module3 := tmp.join("module3.conf")
+
 	tmp.writeYAML(module1, staticConfig{
 		Jobs: []confgroup.Config{{"name": "name"}},
 	})
 	tmp.writeYAML(module2, staticConfig{
 		Jobs: []confgroup.Config{{"name": "name"}},
 	})
+	tmp.writeString(module3, "# a comment")
+
 	reg := confgroup.Registry{
 		"module1": {},
 		"module2": {},
+		"module3": {},
 	}
 	discovery := prepareDiscovery(t, Config{
 		Registry: reg,
-		Read:     []string{module1, module2},
+		Read:     []string{module1, module2, module3},
 	})
 	expected := []*confgroup.Group{
 		{
@@ -73,6 +78,9 @@ func TestReader_Run(t *testing.T) {
 					"priority":            module.Priority,
 				},
 			},
+		},
+		{
+			Source: module3,
 		},
 	}
 
