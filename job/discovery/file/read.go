@@ -9,14 +9,6 @@ import (
 	"github.com/netdata/go-orchestrator/pkg/logger"
 )
 
-type format int
-
-const (
-	unknownFormat format = iota
-	staticFormat
-	sdFormat
-)
-
 type (
 	staticConfig struct {
 		confgroup.Default `yaml:",inline"`
@@ -66,12 +58,13 @@ func (r Reader) groups() (groups []*confgroup.Group) {
 				continue
 			}
 
-			group, err := parse(r.reg, path)
-			if err != nil {
+			if group, err := parse(r.reg, path); err != nil {
 				r.Warningf("parse '%s': %v", path, err)
-				continue
+			} else if group == nil {
+				groups = append(groups, &confgroup.Group{Source: path})
+			} else {
+				groups = append(groups, group)
 			}
-			groups = append(groups, group)
 		}
 	}
 	return groups

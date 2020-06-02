@@ -1,13 +1,12 @@
 package file
 
 import (
+	"github.com/netdata/go-orchestrator/module"
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/netdata/go-orchestrator/job/confgroup"
-	"github.com/netdata/go-orchestrator/module"
-
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestParse(t *testing.T) {
@@ -56,10 +55,10 @@ func TestParse(t *testing.T) {
 				},
 			}
 
-			groups, err := parse(reg, filename)
+			group, err := parse(reg, filename)
 
 			require.NoError(t, err)
-			assert.Equal(t, expected, groups)
+			assert.Equal(t, expected, group)
 		},
 		"static, default: +job +conf +module (merge all)": func(t *testing.T, tmp *tmpDir) {
 			reg := confgroup.Registry{
@@ -94,10 +93,10 @@ func TestParse(t *testing.T) {
 				},
 			}
 
-			groups, err := parse(reg, filename)
+			group, err := parse(reg, filename)
 
 			require.NoError(t, err)
-			assert.Equal(t, expected, groups)
+			assert.Equal(t, expected, group)
 		},
 		"static, default: -job +conf +module": func(t *testing.T, tmp *tmpDir) {
 			reg := confgroup.Registry{
@@ -135,10 +134,10 @@ func TestParse(t *testing.T) {
 				},
 			}
 
-			groups, err := parse(reg, filename)
+			group, err := parse(reg, filename)
 
 			require.NoError(t, err)
-			assert.Equal(t, expected, groups)
+			assert.Equal(t, expected, group)
 		},
 		"static, default: -job -conf +module": func(t *testing.T, tmp *tmpDir) {
 			reg := confgroup.Registry{
@@ -171,10 +170,10 @@ func TestParse(t *testing.T) {
 				},
 			}
 
-			groups, err := parse(reg, filename)
+			group, err := parse(reg, filename)
 
 			require.NoError(t, err)
-			assert.Equal(t, expected, groups)
+			assert.Equal(t, expected, group)
 		},
 		"static, default: -job -conf -module (+global)": func(t *testing.T, tmp *tmpDir) {
 			reg := confgroup.Registry{
@@ -203,10 +202,10 @@ func TestParse(t *testing.T) {
 				},
 			}
 
-			groups, err := parse(reg, filename)
+			group, err := parse(reg, filename)
 
 			require.NoError(t, err)
-			assert.Equal(t, expected, groups)
+			assert.Equal(t, expected, group)
 		},
 		"sd, default: +job +module": func(t *testing.T, tmp *tmpDir) {
 			reg := confgroup.Registry{
@@ -241,10 +240,10 @@ func TestParse(t *testing.T) {
 				},
 			}
 
-			groups, err := parse(reg, filename)
+			group, err := parse(reg, filename)
 
 			require.NoError(t, err)
-			assert.Equal(t, expected, groups)
+			assert.Equal(t, expected, group)
 		},
 		"sd, default: -job +module": func(t *testing.T, tmp *tmpDir) {
 			reg := confgroup.Registry{
@@ -276,10 +275,10 @@ func TestParse(t *testing.T) {
 				},
 			}
 
-			groups, err := parse(reg, filename)
+			group, err := parse(reg, filename)
 
 			require.NoError(t, err)
-			assert.Equal(t, expected, groups)
+			assert.Equal(t, expected, group)
 		},
 		"sd, default: -job -module (+global)": func(t *testing.T, tmp *tmpDir) {
 			reg := confgroup.Registry{
@@ -307,10 +306,10 @@ func TestParse(t *testing.T) {
 				},
 			}
 
-			groups, err := parse(reg, filename)
+			group, err := parse(reg, filename)
 
 			require.NoError(t, err)
-			assert.Equal(t, expected, groups)
+			assert.Equal(t, expected, group)
 		},
 		"sd, job has no 'module' or 'module' is empty": func(t *testing.T, tmp *tmpDir) {
 			reg := confgroup.Registry{
@@ -329,10 +328,10 @@ func TestParse(t *testing.T) {
 				Configs: []confgroup.Config{},
 			}
 
-			groups, err := parse(reg, filename)
+			group, err := parse(reg, filename)
 
 			require.NoError(t, err)
-			assert.Equal(t, expected, groups)
+			assert.Equal(t, expected, group)
 		},
 		"conf registry has no module": func(t *testing.T, tmp *tmpDir) {
 			reg := confgroup.Registry{
@@ -352,10 +351,10 @@ func TestParse(t *testing.T) {
 				Configs: []confgroup.Config{},
 			}
 
-			groups, err := parse(reg, filename)
+			group, err := parse(reg, filename)
 
 			require.NoError(t, err)
-			assert.Equal(t, expected, groups)
+			assert.Equal(t, expected, group)
 		},
 		"empty file": func(t *testing.T, tmp *tmpDir) {
 			reg := confgroup.Registry{
@@ -363,18 +362,29 @@ func TestParse(t *testing.T) {
 			}
 
 			filename := tmp.createFile("empty-*")
-			groups, err := parse(reg, filename)
+			group, err := parse(reg, filename)
 
+			assert.Nil(t, group)
 			require.NoError(t, err)
-			assert.Nil(t, groups)
+		},
+		"only comments, unknown empty format": func(t *testing.T, tmp *tmpDir) {
+			reg := confgroup.Registry{}
+
+			filename := tmp.createFile("unknown-empty-format-*")
+			tmp.writeString(filename, "# a comment")
+			group, err := parse(reg, filename)
+
+			assert.Nil(t, group)
+			assert.NoError(t, err)
 		},
 		"unknown format": func(t *testing.T, tmp *tmpDir) {
 			reg := confgroup.Registry{}
 
 			filename := tmp.createFile("unknown-format-*")
 			tmp.writeYAML(filename, "unknown")
-			_, err := parse(reg, filename)
+			group, err := parse(reg, filename)
 
+			assert.Nil(t, group)
 			assert.Error(t, err)
 		},
 	}

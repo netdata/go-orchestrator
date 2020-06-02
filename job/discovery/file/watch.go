@@ -117,7 +117,7 @@ func (w *Watcher) refresh(ctx context.Context, in chan<- []*confgroup.Group) {
 		return
 	default:
 	}
-	var added, removed []*confgroup.Group
+	var updates []*confgroup.Group
 	seen := make(map[string]bool)
 
 	for _, file := range w.listFiles() {
@@ -137,12 +137,13 @@ func (w *Watcher) refresh(ctx context.Context, in chan<- []*confgroup.Group) {
 		}
 		w.cache.put(file, fi.ModTime())
 
-		group, err := parse(w.reg, file)
-		if err != nil {
+		if group, err := parse(w.reg, file); err != nil {
 			w.Warningf("parse '%s': %v", file, err)
-			continue
+		} else if group == nil {
+			updates = append(updates, &confgroup.Group{Source: file})
+		} else {
+			updates = append(updates, group)
 		}
-		added = append(added, group)
 	}
 
 	for name := range w.cache {
@@ -150,10 +151,10 @@ func (w *Watcher) refresh(ctx context.Context, in chan<- []*confgroup.Group) {
 			continue
 		}
 		w.cache.remove(name)
-		removed = append(removed, &confgroup.Group{Source: name})
+		updates = append(updates, &confgroup.Group{Source: name})
 	}
 
-	sendGroups(ctx, in, append(added, removed...))
+	sendGroups(ctx, in, updates)
 	w.watchDirs()
 }
 

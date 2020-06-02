@@ -10,6 +10,15 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type format int
+
+const (
+	unknownFormat format = iota
+	unknownEmptyFormat
+	staticFormat
+	sdFormat
+)
+
 func parse(req confgroup.Registry, path string) (*confgroup.Group, error) {
 	bs, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -24,6 +33,8 @@ func parse(req confgroup.Registry, path string) (*confgroup.Group, error) {
 		return parseStaticFormat(req, path, bs)
 	case sdFormat:
 		return parseSDFormat(req, path, bs)
+	case unknownEmptyFormat:
+		return nil, nil
 	default:
 		return nil, fmt.Errorf("unknown file format: '%s'", path)
 	}
@@ -79,6 +90,10 @@ func cfgFormat(bs []byte) format {
 	if err := yaml.Unmarshal(bs, &data); err != nil {
 		return unknownFormat
 	}
+	if data == nil {
+		return unknownEmptyFormat
+	}
+
 	type (
 		static = map[interface{}]interface{}
 		sd     = []interface{}

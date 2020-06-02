@@ -95,7 +95,7 @@ func (d *tmpDir) join(filename string) string {
 func (d *tmpDir) createFile(pattern string) string {
 	f, err := ioutil.TempFile(d.dir, pattern)
 	require.NoError(d.t, err)
-	f.Close()
+	_ = f.Close()
 	return f.Name()
 }
 
@@ -113,6 +113,11 @@ func (d *tmpDir) writeYAML(filename string, in interface{}) {
 	bs, err := yaml.Marshal(in)
 	require.NoError(d.t, err)
 	err = ioutil.WriteFile(filename, bs, 0644)
+	require.NoError(d.t, err)
+}
+
+func (d *tmpDir) writeString(filename, data string) {
+	err := ioutil.WriteFile(filename, []byte(data), 0644)
 	require.NoError(d.t, err)
 }
 
