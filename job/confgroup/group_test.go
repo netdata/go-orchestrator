@@ -118,17 +118,74 @@ func TestConfig_Priority(t *testing.T) {
 }
 
 func TestConfig_Hash(t *testing.T) {
+	tests := map[string]struct {
+		one, two Config
+		equal    bool
+	}{
+		"same keys, no internal keys": {
+			one:   Config{"name": "name"},
+			two:   Config{"name": "name"},
+			equal: true,
+		},
+		"same keys, different internal keys": {
+			one:   Config{"name": "name", "__key__": 1},
+			two:   Config{"name": "name", "__value__": 1},
+			equal: true,
+		},
+		"same keys, same internal keys": {
+			one:   Config{"name": "name", "__key__": 1},
+			two:   Config{"name": "name", "__key__": 1},
+			equal: true,
+		},
+		"diff keys, no internal keys": {
+			one:   Config{"name": "name1"},
+			two:   Config{"name": "name2"},
+			equal: false,
+		},
+		"diff keys, different internal keys": {
+			one:   Config{"name": "name1", "__key__": 1},
+			two:   Config{"name": "name2", "__value__": 1},
+			equal: false,
+		},
+		"diff keys, same internal keys": {
+			one:   Config{"name": "name1", "__key__": 1},
+			two:   Config{"name": "name2", "__key__": 1},
+			equal: false,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			if test.equal {
+				assert.Equal(t, test.one.Hash(), test.two.Hash())
+			} else {
+				assert.NotEqual(t, test.one.Hash(), test.two.Hash())
+			}
+		})
+	}
 	cfg := Config{"name": "name", "module": "module"}
 	assert.NotZero(t, cfg.Hash())
 }
 
-func TestConfig_Set(t *testing.T) {
-	expected := Config{"name": "name"}
+func TestConfig_SetModule(t *testing.T) {
+	cfg := Config{}
+	cfg.SetModule("name")
 
-	actual := Config{}
-	actual.Set("name", "name")
+	assert.Equal(t, cfg.Module(), "name")
+}
 
-	assert.Equal(t, expected, actual)
+func TestConfig_SetSource(t *testing.T) {
+	cfg := Config{}
+	cfg.SetSource("name")
+
+	assert.Equal(t, cfg.Source(), "name")
+}
+
+func TestConfig_SetProvider(t *testing.T) {
+	cfg := Config{}
+	cfg.SetProvider("name")
+
+	assert.Equal(t, cfg.Provider(), "name")
 }
 
 func TestConfig_Apply(t *testing.T) {

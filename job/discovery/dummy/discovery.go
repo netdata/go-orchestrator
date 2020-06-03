@@ -71,7 +71,9 @@ func (d Discovery) newCfgGroup(name string) *confgroup.Group {
 	}
 
 	cfg := confgroup.Config{}
-	cfg.Set("module", name)
+	cfg.SetModule(name)
+	cfg.SetSource(name)
+	cfg.SetProvider("dummy")
 	cfg.Apply(def)
 
 	group := &confgroup.Group{

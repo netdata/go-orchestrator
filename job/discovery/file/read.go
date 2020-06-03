@@ -67,5 +67,11 @@ func (r Reader) groups() (groups []*confgroup.Group) {
 			}
 		}
 	}
+	for _, group := range groups {
+		for _, cfg := range group.Configs {
+			cfg.SetSource(group.Source)
+			cfg.SetProvider("file reader")
+		}
+	}
 	return groups
 }
