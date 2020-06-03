@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"sync"
 	"time"
 
@@ -201,14 +202,21 @@ func (m *Manager) handleAddCfg(ctx context.Context, cfg confgroup.Config) {
 		return
 	}
 
-	if !isRetry && m.PrevState.Contains(cfg, success, retry) {
-		// TODO: method?
-		// 5 minutes
-		job.AutoDetectEvery = 30
-		job.AutoDetectTries = 11
+	if !isRetry && cfg.AutoDetectionRetry() == 0 {
+		switch {
+		case m.PrevState.Contains(cfg, success, retry):
+			// TODO: method?
+			// 5 minutes
+			job.AutoDetectEvery = 30
+			job.AutoDetectTries = 11
+		case IsInsideK8sCluster() && cfg.Provider() == "file watcher":
+			// TODO: not sure this logic should belong to builder
+			job.AutoDetectEvery = 10
+			job.AutoDetectTries = 7
+		}
 	}
 
-	switch v := runDetection(job); v {
+	switch v := detection(job); v {
 	case success:
 		m.Saver.Save(cfg, success)
 		m.Runner.Start(job)
@@ -264,7 +272,7 @@ func (m *Manager) buildJob(cfg confgroup.Config) (*module.Job, error) {
 	return job, nil
 }
 
-func runDetection(job jobpkg.Job) state {
+func detection(job jobpkg.Job) state {
 	if !job.AutoDetection() {
 		if job.RetryAutoDetection() {
 			return retry
@@ -296,4 +304,8 @@ func unmarshal(conf interface{}, module interface{}) error {
 		return err
 	}
 	return yaml.Unmarshal(bs, module)
+}
+
+func IsInsideK8sCluster() bool {
+	return os.Getenv("KUBERNETES_SERVICE_HOST") != "" && os.Getenv("KUBERNETES_SERVICE_PORT") != ""
 }

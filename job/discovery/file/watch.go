@@ -117,7 +117,7 @@ func (w *Watcher) refresh(ctx context.Context, in chan<- []*confgroup.Group) {
 		return
 	default:
 	}
-	var updates []*confgroup.Group
+	var groups []*confgroup.Group
 	seen := make(map[string]bool)
 
 	for _, file := range w.listFiles() {
@@ -140,9 +140,9 @@ func (w *Watcher) refresh(ctx context.Context, in chan<- []*confgroup.Group) {
 		if group, err := parse(w.reg, file); err != nil {
 			w.Warningf("parse '%s': %v", file, err)
 		} else if group == nil {
-			updates = append(updates, &confgroup.Group{Source: file})
+			groups = append(groups, &confgroup.Group{Source: file})
 		} else {
-			updates = append(updates, group)
+			groups = append(groups, group)
 		}
 	}
 
@@ -151,10 +151,17 @@ func (w *Watcher) refresh(ctx context.Context, in chan<- []*confgroup.Group) {
 			continue
 		}
 		w.cache.remove(name)
-		updates = append(updates, &confgroup.Group{Source: name})
+		groups = append(groups, &confgroup.Group{Source: name})
 	}
 
-	sendGroups(ctx, in, updates)
+	for _, group := range groups {
+		for _, cfg := range group.Configs {
+			cfg.SetSource(group.Source)
+			cfg.SetProvider("file watcher")
+		}
+	}
+
+	send(ctx, in, groups)
 	w.watchDirs()
 }
 
@@ -203,7 +210,7 @@ func isCreate(event fsnotify.Event) bool {
 	return event.Op&fsnotify.Create == fsnotify.Create
 }
 
-func sendGroups(ctx context.Context, in chan<- []*confgroup.Group, groups []*confgroup.Group) {
+func send(ctx context.Context, in chan<- []*confgroup.Group, groups []*confgroup.Group) {
 	if len(groups) == 0 {
 		return
 	}

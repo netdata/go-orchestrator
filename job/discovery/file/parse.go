@@ -52,7 +52,7 @@ func parseStaticFormat(reg confgroup.Registry, path string, bs []byte) (*confgro
 		return nil, err
 	}
 	for _, cfg := range modCfg.Jobs {
-		cfg.Set("module", name)
+		cfg.SetModule(name)
 		def := mergeDef(modCfg.Default, modDef)
 		cfg.Apply(def)
 	}
