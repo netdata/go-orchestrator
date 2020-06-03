@@ -58,6 +58,7 @@ func New(cfg Config) *Plugin {
 		ConfDir:           cfg.ConfDir,
 		ModulesConfDir:    cfg.ModulesConfDir,
 		ModulesSDConfPath: cfg.ModulesSDConfPath,
+		StateFile:         cfg.StateFile,
 		RunModule:         cfg.RunModule,
 		MinUpdateEvery:    cfg.MinUpdateEvery,
 		ModuleRegistry:    module.DefaultRegistry,
