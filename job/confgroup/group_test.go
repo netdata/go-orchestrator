@@ -249,9 +249,9 @@ func TestConfig_Apply(t *testing.T) {
 				"priority":            module.Priority,
 			},
 		},
-		"adjust update_every (update_every > min update every)": {
+		"adjust update_every (update_every < min update every)": {
 			def: Default{
-				MinUpdateEvery: 5,
+				MinUpdateEvery: jobDef + 10,
 			},
 			origCfg: Config{
 				"name":         "name",
@@ -261,7 +261,7 @@ func TestConfig_Apply(t *testing.T) {
 			expectedCfg: Config{
 				"name":                "name",
 				"module":              "module",
-				"update_every":        5,
+				"update_every":        jobDef + 10,
 				"autodetection_retry": module.AutoDetectionRetry,
 				"priority":            module.Priority,
 			},
