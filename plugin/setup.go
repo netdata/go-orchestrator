@@ -82,7 +82,7 @@ func (p *Plugin) loadEnabledModules(cfg config) module.Registry {
 		}
 		enabled[name] = creator
 	}
-	p.Infof("registered/enabled modules: %d/%d", len(p.ModuleRegistry), len(enabled))
+	p.Infof("enabled/registered modules: %d/%d", len(enabled), len(p.ModuleRegistry))
 	return enabled
 }
 
