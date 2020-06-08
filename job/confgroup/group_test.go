@@ -266,6 +266,23 @@ func TestConfig_Apply(t *testing.T) {
 				"priority":            module.Priority,
 			},
 		},
+		"do not adjust update_every (update_every > min update every)": {
+			def: Default{
+				MinUpdateEvery: 2,
+			},
+			origCfg: Config{
+				"name":         "name",
+				"module":       "module",
+				"update_every": jobDef,
+			},
+			expectedCfg: Config{
+				"name":                "name",
+				"module":              "module",
+				"update_every":        jobDef,
+				"autodetection_retry": module.AutoDetectionRetry,
+				"priority":            module.Priority,
+			},
+		},
 		"set name to module name if name not set": {
 			def: Default{},
 			origCfg: Config{
