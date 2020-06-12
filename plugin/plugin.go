@@ -195,7 +195,7 @@ func (p *Plugin) keepAlive() {
 		return
 	}
 
-	tk := time.NewTimer(time.Second)
+	tk := time.NewTicker(time.Second)
 	defer tk.Stop()
 
 	for range tk.C {
