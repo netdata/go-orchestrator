@@ -30,6 +30,8 @@ func (r *FileLockRegistry) Register(name string) (bool, error) {
 	ok, err := locker.TryLock()
 	if ok {
 		r.locks[name] = locker
+	} else {
+		_ = locker.Close()
 	}
 	return ok, err
 }
