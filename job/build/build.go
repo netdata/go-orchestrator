@@ -275,7 +275,6 @@ func (m *Manager) handleDetectionSuccess(job jobpkg.Job, cfg confgroup.Config) {
 
 	m.Infof("module '%s' job '%s'  is being served by another plugin, skipping it", cfg.Module(), cfg.Name())
 	m.CurState.Save(cfg, duplicateGlobal)
-	m.handleDetectionSuccess(job, cfg)
 }
 
 func (m *Manager) handleDetectionRetry(ctx context.Context, cfg confgroup.Config) {
