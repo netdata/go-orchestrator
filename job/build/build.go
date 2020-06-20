@@ -203,8 +203,7 @@ func (m *Manager) handleRemove(ctx context.Context, cfgs []confgroup.Config) {
 
 func (m *Manager) handleAddCfg(ctx context.Context, cfg confgroup.Config) {
 	if m.startCache.has(cfg) {
-		m.Infof("module '%s' job '%s' is being served by another job, skipping it",
-			cfg.Module(), cfg.Name())
+		m.Infof("module '%s' job '%s' is being served by another job, skipping it", cfg.Module(), cfg.Name())
 		m.CurState.Save(cfg, duplicateLocal)
 		return
 	}
@@ -250,8 +249,8 @@ func (m *Manager) handleAddCfg(ctx context.Context, cfg confgroup.Config) {
 			m.CurState.Save(cfg, duplicateGlobal)
 		}
 	case retry:
-		m.Infof("module '%s' job '%s' detection failed, will retry in %d seconds",
-			cfg.Module(), cfg.Name(), cfg.AutoDetectionRetry())
+		m.Infof("module '%s' job '%s' detection failed, will retry in %d seconds", cfg.Module(), cfg.Name(),
+			cfg.AutoDetectionRetry())
 		m.CurState.Save(cfg, retry)
 		ctx, cancel := context.WithCancel(ctx)
 		m.retryCache.put(cfg, cancel)
