@@ -58,8 +58,8 @@ const (
 	retry             state = "retry"              // failed, but we need keep trying auto-detection
 	failed            state = "failed"             // failed
 	duplicateLocal    state = "duplicate_local"    // a job with the same FullName is started
-	duplicateGlobal   state = "duplicate_global"   // a job with the same FullName is registered
-	registrationError state = "registration_error" // an error during registration
+	duplicateGlobal   state = "duplicate_global"   // a job with the same FullName is registered by another plugin
+	registrationError state = "registration_error" // an error during registration (only 'too many open files')
 	buildError        state = "build_error"        // an error during building
 )
 
@@ -258,7 +258,7 @@ func (m *Manager) handleAddCfg(ctx context.Context, cfg confgroup.Config) {
 	case failed:
 		m.CurState.Save(cfg, failed)
 	default:
-		m.Warningf("module '%s' job '%s' detection: unknown state '", cfg.Module(), cfg.Name())
+		m.Warningf("module '%s' job '%s' detection: unknown state", cfg.Module(), cfg.Name())
 	}
 }
 
