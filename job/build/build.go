@@ -78,7 +78,6 @@ type (
 		grpCache   *groupCache
 		startCache *startedCache
 		retryCache *retryCache
-		regCache   *regCache
 
 		addCh    chan []confgroup.Config
 		removeCh chan []confgroup.Config
@@ -96,7 +95,6 @@ func NewManager() *Manager {
 		grpCache:   newGroupCache(),
 		startCache: newStartedCache(),
 		retryCache: newRetryCache(),
-		regCache:   newRegistryCache(),
 		addCh:      make(chan []confgroup.Config),
 		removeCh:   make(chan []confgroup.Config),
 		retryCh:    make(chan confgroup.Config),
@@ -124,7 +122,7 @@ func (m *Manager) cleanup() {
 	for _, cancel := range *m.retryCache {
 		cancel()
 	}
-	for name := range *m.regCache {
+	for name := range *m.startCache {
 		_ = m.Registry.Unregister(name)
 	}
 }
@@ -210,12 +208,6 @@ func (m *Manager) handleAddCfg(ctx context.Context, cfg confgroup.Config) {
 		m.CurState.Save(cfg, duplicateLocal)
 		return
 	}
-	if m.regCache.has(cfg) {
-		m.Infof("module '%s' job '%s' is being served by another plugin, skipping it",
-			cfg.Module(), cfg.Name())
-		m.CurState.Save(cfg, duplicateGlobal)
-		return
-	}
 
 	cancel, isRetry := m.retryCache.lookup(cfg)
 	if isRetry {
@@ -246,49 +238,29 @@ func (m *Manager) handleAddCfg(ctx context.Context, cfg confgroup.Config) {
 
 	switch detection(job) {
 	case success:
-		m.handleDetectionSuccess(job, cfg)
+		if ok, err := m.Registry.Register(cfg.FullName()); ok || err != nil && !isTooManyOpenFiles(err) {
+			m.CurState.Save(cfg, success)
+			m.Runner.Start(job)
+			m.startCache.put(cfg)
+		} else if isTooManyOpenFiles(err) {
+			m.Error(err)
+			m.CurState.Save(cfg, registrationError)
+		} else {
+			m.Infof("module '%s' job '%s'  is being served by another plugin, skipping it", cfg.Module(), cfg.Name())
+			m.CurState.Save(cfg, duplicateGlobal)
+		}
 	case retry:
-		m.handleDetectionRetry(ctx, cfg)
+		m.Infof("module '%s' job '%s' detection failed, will retry in %d seconds",
+			cfg.Module(), cfg.Name(), cfg.AutoDetectionRetry())
+		m.CurState.Save(cfg, retry)
+		ctx, cancel := context.WithCancel(ctx)
+		m.retryCache.put(cfg, cancel)
+		go retryTask(ctx, m.retryCh, cfg)
 	case failed:
-		m.handleDetectionFailed(cfg)
+		m.CurState.Save(cfg, failed)
 	default:
 		m.Warningf("module '%s' job '%s' detection: unknown state '", cfg.Module(), cfg.Name())
 	}
-}
-
-func (m *Manager) handleDetectionSuccess(job jobpkg.Job, cfg confgroup.Config) {
-	m.regCache.put(cfg)
-
-	ok, err := m.Registry.Register(cfg.FullName())
-
-	if ok || err != nil && !isTooManyOpenFiles(err) {
-		m.CurState.Save(cfg, success)
-		m.Runner.Start(job)
-		m.startCache.put(cfg)
-		return
-	}
-	if isTooManyOpenFiles(err) {
-		m.Error(err)
-		m.CurState.Save(cfg, registrationError)
-		return
-	}
-
-	m.Infof("module '%s' job '%s'  is being served by another plugin, skipping it", cfg.Module(), cfg.Name())
-	m.CurState.Save(cfg, duplicateGlobal)
-}
-
-func (m *Manager) handleDetectionRetry(ctx context.Context, cfg confgroup.Config) {
-	m.Infof("module '%s' job '%s' detection failed, will retry in %d seconds",
-		cfg.Module(), cfg.Name(), cfg.AutoDetectionRetry())
-
-	m.CurState.Save(cfg, retry)
-	ctx, cancel := context.WithCancel(ctx)
-	m.retryCache.put(cfg, cancel)
-	go retryTask(ctx, m.retryCh, cfg)
-}
-
-func (m *Manager) handleDetectionFailed(cfg confgroup.Config) {
-	m.CurState.Save(cfg, failed)
 }
 
 func (m *Manager) handleRemoveCfg(cfg confgroup.Config) {
@@ -296,12 +268,8 @@ func (m *Manager) handleRemoveCfg(cfg confgroup.Config) {
 
 	if m.startCache.has(cfg) {
 		m.Runner.Stop(cfg.FullName())
-		m.startCache.remove(cfg)
-	}
-
-	if m.regCache.has(cfg) {
 		_ = m.Registry.Unregister(cfg.FullName())
-		m.regCache.remove(cfg)
+		m.startCache.remove(cfg)
 	}
 
 	if cancel, ok := m.retryCache.lookup(cfg); ok {

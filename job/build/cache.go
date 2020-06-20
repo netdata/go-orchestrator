@@ -29,10 +29,6 @@ func newRetryCache() *retryCache {
 	return &retryCache{}
 }
 
-func newRegistryCache() *regCache {
-	return &regCache{}
-}
-
 func newGroupCache() *groupCache {
 	return &groupCache{
 		global: make(map[cfgHash]cfgCount),
@@ -47,10 +43,6 @@ func (c startedCache) has(cfg confgroup.Config) bool { _, ok := c[cfg.FullName()
 func (c retryCache) put(cfg confgroup.Config, stop func())      { c[cfg.Hash()] = stop }
 func (c retryCache) remove(cfg confgroup.Config)                { delete(c, cfg.Hash()) }
 func (c retryCache) lookup(cfg confgroup.Config) (func(), bool) { v, ok := c[cfg.Hash()]; return v, ok }
-
-func (c regCache) put(cfg confgroup.Config)      { c[cfg.FullName()] = struct{}{} }
-func (c regCache) remove(cfg confgroup.Config)   { delete(c, cfg.FullName()) }
-func (c regCache) has(cfg confgroup.Config) bool { _, ok := c[cfg.FullName()]; return ok }
 
 func (c *groupCache) put(group *confgroup.Group) (added, removed []confgroup.Config) {
 	if group == nil {
