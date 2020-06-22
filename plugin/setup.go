@@ -31,8 +31,8 @@ type config struct {
 }
 
 func (c config) String() string {
-	return fmt.Sprintf("enabled '%v', default_run '%v', max_procs '%d', explicitly enabled modules '%d'",
-		c.Enabled, c.DefaultRun, c.MaxProcs, len(c.Modules))
+	return fmt.Sprintf("enabled '%v', default_run '%v', max_procs '%d'",
+		c.Enabled, c.DefaultRun, c.MaxProcs)
 }
 
 func (p *Plugin) loadPluginConfig() config {

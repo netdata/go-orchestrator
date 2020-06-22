@@ -12,6 +12,7 @@ import (
 	"github.com/netdata/go-orchestrator/job/build"
 	"github.com/netdata/go-orchestrator/job/confgroup"
 	"github.com/netdata/go-orchestrator/job/discovery"
+	"github.com/netdata/go-orchestrator/job/registry"
 	"github.com/netdata/go-orchestrator/job/run"
 	"github.com/netdata/go-orchestrator/job/state"
 	"github.com/netdata/go-orchestrator/module"
@@ -31,6 +32,7 @@ type Config struct {
 	ModulesConfDir    []string
 	ModulesSDConfPath []string
 	StateFile         string
+	LockDir           string
 	ModuleRegistry    module.Registry
 	RunModule         string
 	MinUpdateEvery    int
@@ -43,6 +45,7 @@ type Plugin struct {
 	ModulesConfDir    multipath.MultiPath
 	ModulesSDConfPath []string
 	StateFile         string
+	LockDir           string
 	RunModule         string
 	MinUpdateEvery    int
 	ModuleRegistry    module.Registry
@@ -59,6 +62,7 @@ func New(cfg Config) *Plugin {
 		ModulesConfDir:    cfg.ModulesConfDir,
 		ModulesSDConfPath: cfg.ModulesSDConfPath,
 		StateFile:         cfg.StateFile,
+		LockDir:           cfg.LockDir,
 		RunModule:         cfg.RunModule,
 		MinUpdateEvery:    cfg.MinUpdateEvery,
 		ModuleRegistry:    module.DefaultRegistry,
@@ -142,10 +146,14 @@ func (p *Plugin) run(ctx context.Context) {
 	builder.Out = p.Out
 	builder.Modules = enabled
 
+	if p.LockDir != "" {
+		builder.Registry = registry.NewFileLockRegistry(p.LockDir)
+	}
+
 	var saver *state.Manager
 	if !isTerminal && p.StateFile != "" {
 		saver = state.NewManager(p.StateFile)
-		builder.Saver = saver
+		builder.CurState = saver
 		if st, err := state.Load(p.StateFile); err != nil {
 			p.Warningf("couldn't load state file: %v", err)
 		} else {
