@@ -14,7 +14,6 @@ type (
 
 	startedCache map[fullName]struct{}
 	retryCache   map[cfgHash]context.CancelFunc
-	regCache     map[fullName]struct{}
 	groupCache   struct {
 		global map[cfgHash]cfgCount
 		source map[grpSource]map[cfgHash]confgroup.Config
