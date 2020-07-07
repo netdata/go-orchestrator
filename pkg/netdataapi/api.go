@@ -51,28 +51,28 @@ func (a *API) DIMENSION(
 // BEGIN initialize data collection for a chart.
 func (a *API) BEGIN(typeID string, ID string, msSince int) (err error) {
 	if msSince > 0 {
-		_, err = fmt.Fprintf(a, "BEGIN %s.%s %d\n", typeID, ID, msSince)
+		_, err = fmt.Fprintf(a, "BEGIN '%s.%s' %d\n", typeID, ID, msSince)
 	} else {
-		_, err = fmt.Fprintf(a, "BEGIN %s.%s\n", typeID, ID)
+		_, err = fmt.Fprintf(a, "BEGIN '%s.%s'\n", typeID, ID)
 	}
 	return err
 }
 
 // SET set the value of a dimension for the initialized chart.
 func (a *API) SET(ID string, value int64) error {
-	_, err := fmt.Fprintf(a, "SET %s = %d\n", ID, value)
+	_, err := fmt.Fprintf(a, "SET '%s' = %d\n", ID, value)
 	return err
 }
 
 // SETEMPTY set the empty value of a dimension for the initialized chart.
 func (a *API) SETEMPTY(ID string) error {
-	_, err := fmt.Fprintf(a, "SET %s = \n", ID)
+	_, err := fmt.Fprintf(a, "SET '%s' = \n", ID)
 	return err
 }
 
 // VARIABLE set the value of a CHART scope variable for the initialized chart.
 func (a *API) VARIABLE(ID string, value int64) error {
-	_, err := fmt.Fprintf(a, "VARIABLE CHART %s = %d\n", ID, value)
+	_, err := fmt.Fprintf(a, "VARIABLE CHART '%s' = %d\n", ID, value)
 	return err
 }
 

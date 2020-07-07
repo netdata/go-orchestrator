@@ -66,7 +66,7 @@ func TestAPI_BEGIN(t *testing.T) {
 
 	assert.Equal(
 		t,
-		"BEGIN typeID.id\n",
+		"BEGIN 'typeID.id'\n",
 		b.String(),
 	)
 
@@ -80,7 +80,7 @@ func TestAPI_BEGIN(t *testing.T) {
 
 	assert.Equal(
 		t,
-		"BEGIN typeID.id 1\n",
+		"BEGIN 'typeID.id' 1\n",
 		b.String(),
 	)
 }
@@ -93,7 +93,7 @@ func TestAPI_SET(t *testing.T) {
 
 	assert.Equal(
 		t,
-		"SET id = 100\n",
+		"SET 'id' = 100\n",
 		b.String(),
 	)
 }
@@ -106,7 +106,7 @@ func TestAPI_SETEMPTY(t *testing.T) {
 
 	assert.Equal(
 		t,
-		"SET id = \n",
+		"SET 'id' = \n",
 		b.String(),
 	)
 }
@@ -119,7 +119,7 @@ func TestAPI_VARIABLE(t *testing.T) {
 
 	assert.Equal(
 		t,
-		"VARIABLE CHART id = 100\n",
+		"VARIABLE CHART 'id' = 100\n",
 		b.String(),
 	)
 }
