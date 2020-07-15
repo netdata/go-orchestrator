@@ -146,6 +146,25 @@ func TestCharts_Add(t *testing.T) {
 	assert.True(t, charts[1] == chart2)
 }
 
+func TestCharts_Add_SameID(t *testing.T) {
+	charts := Charts{}
+	chart1 := createTestChart("1")
+	chart2 := createTestChart("1")
+
+	assert.NoError(t, charts.Add(chart1))
+	assert.Error(t, charts.Add(chart2))
+	assert.Len(t, charts, 1)
+
+	charts = Charts{}
+	chart1 = createTestChart("1")
+	chart2 = createTestChart("1")
+
+	assert.NoError(t, charts.Add(chart1))
+	chart1.MarkRemove()
+	assert.NoError(t, charts.Add(chart2))
+	assert.Len(t, charts, 2)
+}
+
 func TestCharts_Get(t *testing.T) {
 	chart := createTestChart("1")
 	charts := Charts{

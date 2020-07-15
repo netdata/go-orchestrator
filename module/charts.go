@@ -175,7 +175,7 @@ func (c *Charts) Add(charts ...*Chart) error {
 		if err != nil {
 			return fmt.Errorf("error on adding chart : %s", err)
 		}
-		if c.Has(chart.ID) {
+		if chart := c.Get(chart.ID); chart != nil && !chart.remove {
 			return fmt.Errorf("error on adding chart : '%s' is already in charts", chart.ID)
 		}
 		*c = append(*c, chart)
