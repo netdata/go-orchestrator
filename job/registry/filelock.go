@@ -18,7 +18,7 @@ func NewFileLockRegistry(dir string) *FileLockRegistry {
 	}
 }
 
-const suffix = ".lock"
+const suffix = "collector.lock"
 
 func (r *FileLockRegistry) Register(name string) (bool, error) {
 	name = filepath.Join(r.Dir, name+suffix)
