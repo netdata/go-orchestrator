@@ -377,7 +377,7 @@ func checkChart(chart *Chart) error {
 	}
 
 	if id := checkID(chart.ID); id != -1 {
-		return fmt.Errorf("unacceptable symbol in ID : '%s'", string(id))
+		return fmt.Errorf("unacceptable symbol in ID : '%c'", id)
 	}
 
 	set := make(map[string]bool)
@@ -412,7 +412,7 @@ func checkDim(d *Dim) error {
 		return errors.New("empty dim ID")
 	}
 	if id := checkID(d.ID); id != -1 {
-		return fmt.Errorf("unacceptable symbol in dim ID '%s' : '%s'", d.ID, string(id))
+		return fmt.Errorf("unacceptable symbol in dim ID '%s' : '%c'", d.ID, id)
 	}
 	return nil
 }
@@ -422,7 +422,7 @@ func checkVar(v *Var) error {
 		return errors.New("empty var ID")
 	}
 	if id := checkID(v.ID); id != -1 {
-		return fmt.Errorf("unacceptable symbol in var ID '%s' : '%s'", v.ID, string(id))
+		return fmt.Errorf("unacceptable symbol in var ID '%s' : '%c'", v.ID, id)
 	}
 	return nil
 }
