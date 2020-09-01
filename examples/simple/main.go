@@ -95,7 +95,9 @@ func main() {
 		os.Exit(0)
 	}
 
-	module.Register("example", module.Creator{Create: func() module.Module { return &example{} }})
+	module.Register("example", module.Creator{
+		Create: func() module.Module { return &example{} }},
+	)
 
 	p := plugin.New(plugin.Config{
 		Name:              name,

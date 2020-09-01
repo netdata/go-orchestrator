@@ -12,16 +12,18 @@ import (
 )
 
 type Manager struct {
-	path  string
-	state *State
+	path    string
+	state   *State
+	flushCh chan struct{}
 	*logger.Logger
 }
 
 func NewManager(path string) *Manager {
 	return &Manager{
-		state:  &State{mux: new(sync.Mutex)},
-		path:   path,
-		Logger: logger.New("state save", "manager"),
+		state:   &State{mux: new(sync.Mutex)},
+		path:    path,
+		flushCh: make(chan struct{}, 1),
+		Logger:  logger.New("state save", "manager"),
 	}
 }
 
@@ -29,29 +31,42 @@ func (m *Manager) Run(ctx context.Context) {
 	m.Info("instance is started")
 	defer func() { m.Info("instance is stopped") }()
 
-	tk := time.NewTicker(time.Second * 10)
+	tk := time.NewTicker(time.Second * 5)
 	defer tk.Stop()
-	defer m.save()
+	defer m.flush()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-tk.C:
-			m.save()
+			select {
+			case <-m.flushCh:
+				m.flush()
+			default:
+			}
 		}
 	}
 }
 
 func (m *Manager) Save(cfg confgroup.Config, state string) {
 	m.state.add(cfg, state)
+	m.triggerFlush()
 }
 
 func (m *Manager) Remove(cfg confgroup.Config) {
 	m.state.remove(cfg)
+	m.triggerFlush()
 }
 
-func (m *Manager) save() {
+func (m *Manager) triggerFlush() {
+	select {
+	case m.flushCh <- struct{}{}:
+	default:
+	}
+}
+
+func (m *Manager) flush() {
 	bs, err := m.state.bytes()
 	if err != nil {
 		return
