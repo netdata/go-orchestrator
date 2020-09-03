@@ -3,7 +3,7 @@ package registry
 import (
 	"path/filepath"
 
-	"github.com/ilyam8/flock"
+	"github.com/gofrs/flock"
 )
 
 type FileLockRegistry struct {
