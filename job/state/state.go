@@ -50,13 +50,17 @@ func (m *Manager) Run(ctx context.Context) {
 }
 
 func (m *Manager) Save(cfg confgroup.Config, state string) {
-	m.state.add(cfg, state)
-	m.triggerFlush()
+	if st, ok := m.state.lookup(cfg); !ok || state != st {
+		m.state.add(cfg, state)
+		m.triggerFlush()
+	}
 }
 
 func (m *Manager) Remove(cfg confgroup.Config) {
-	m.state.remove(cfg)
-	m.triggerFlush()
+	if _, ok := m.state.lookup(cfg); ok {
+		m.state.remove(cfg)
+		m.triggerFlush()
+	}
 }
 
 func (m *Manager) triggerFlush() {
